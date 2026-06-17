@@ -2822,20 +2822,6 @@ namespace DTE10T_WPF
             return result;
         }
 
-        ///<summary>
-        /// 将 ushort 数组解析为 double 数组 (每 1 个 ushort = 1 个 INT16)</summary>
-        private static double[] ParseInt16s(ushort[] raw, int count, double scaling)
-        {
-            var result = new double[count];
-            for(int i = 0; i < count; i++)
-            {
-                // 将 ushort 转换为有符号的 short
-                short signedValue = (short)raw[i];
-                result[i] = Math.Round(signedValue * scaling, 2);
-            }
-            return result;
-        }
-
         // ========== 工具方法 ==========
 
         ///<summary>
@@ -2855,6 +2841,20 @@ namespace DTE10T_WPF
             }
             float value = BitConverter.ToSingle(bytes, 0);
             return Math.Round(value * scaling, 2);
+        }
+
+        ///<summary>
+        /// 将 ushort 数组解析为 double 数组 (每 1 个 ushort = 1 个 INT16)</summary>
+        private static double[] ParseInt16s(ushort[] raw, int count, double scaling)
+        {
+            var result = new double[count];
+            for(int i = 0; i < count; i++)
+            {
+                // 将 ushort 转换为有符号的 short
+                short signedValue = (short)raw[i];
+                result[i] = Math.Round(signedValue * scaling, 2);
+            }
+            return result;
         }
 
         private static Parity ParseParity(string parity)

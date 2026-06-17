@@ -999,7 +999,6 @@ namespace DTE10T_WPF
                     {
                         cmbComPort.Items.Add(new ComboBoxItem { Content = port });
                     }
-                    cmbComPort.SelectedIndex = 0;
                     cmbComPort.IsEnabled = true;
                 }
             }
@@ -1448,6 +1447,8 @@ namespace DTE10T_WPF
         // ========== 配置管理方法 ==========
         private void LoadConfigIfExists()
         {
+            bool configLoaded = false;
+            
             if (ConfigManager.ConfigExists())
             {
                 try
@@ -1485,6 +1486,8 @@ namespace DTE10T_WPF
                                 break;
                             }
                         }
+                        
+                        configLoaded = true;
                     }
                     
                     System.Diagnostics.Debug.WriteLine("[Config] 配置加载成功");
@@ -1493,6 +1496,26 @@ namespace DTE10T_WPF
                 {
                     System.Diagnostics.Debug.WriteLine($"[Config] 加载配置失败: {ex.Message}");
                 }
+            }
+            
+            // 如果没有配置文件，或者保存的串口不在可用列表中，则默认选择第一个串口
+            if (!configLoaded || cmbComPort.SelectedItem == null)
+            {
+                if (cmbComPort.Items.Count > 0)
+                {
+                    cmbComPort.SelectedIndex = 0;
+                }
+            }
+            
+            // 默认选择第一个波特率和协议
+            if (cmbBaudRate.SelectedItem == null && cmbBaudRate.Items.Count > 0)
+            {
+                cmbBaudRate.SelectedIndex = 2; // 默认9600
+            }
+            
+            if (cmbProtocol.SelectedItem == null && cmbProtocol.Items.Count > 0)
+            {
+                cmbProtocol.SelectedIndex = 0;
             }
         }
 
