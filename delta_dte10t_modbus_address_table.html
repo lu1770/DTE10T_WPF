@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台达 DTE10T 系列温度控制器 Modbus 通信地址表</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #1a3c6e;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .table-wrapper {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        .section-title {
+            background: linear-gradient(135deg, #1a3c6e, #2a5cae);
+            color: #fff;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .table-scroll {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+        thead th {
+            background: #e8eef6;
+            color: #1a3c6e;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 2px solid #c0cce0;
+            white-space: nowrap;
+        }
+        tbody td {
+            padding: 8px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #e8e8e8;
+            text-align: center;
+            white-space: nowrap;
+        }
+        tbody tr:hover {
+            background: #f5f8ff;
+        }
+        tbody tr:nth-child(even) {
+            background: #fafbfd;
+        }
+        tbody tr:nth-child(even):hover {
+            background: #f0f4ff;
+        }
+        .addr-hex {
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #c03000;
+            font-weight: bold;
+        }
+        .addr-dec {
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #0066aa;
+        }
+        .ch-group-ina {
+            border-left: 3px solid #4CAF50;
+        }
+        .ch-group-inb {
+            border-left: 3px solid #FF9800;
+        }
+        .category-header {
+            background: #f0f4ff !important;
+            font-weight: bold;
+            color: #1a3c6e;
+            text-align: left !important;
+            font-size: 13px;
+        }
+        .note {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .note strong {
+            color: #e65100;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0 20px;
+            font-size: 13px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+        .legend-color.ina { background: #4CAF50; }
+        .legend-color.inb { background: #FF9800; }
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        @media print {
+            body { background: #fff; padding: 10px; }
+            .table-wrapper { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>台达 DTE10T 系列温度控制器</h1>
+        <p class="subtitle">Modbus 通信地址表（含十进制地址对照） | 型号：DTE10T / DTE20T</p>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color ina"></div> INA 群组 (CH1~CH4)</div>
+            <div class="legend-item"><div class="legend-color inb"></div> INB 群组 (CH5~CH8)</div>
+        </div>
+
+        <div class="note">
+            <strong>说明：</strong><br>
+            • 本表基于台达 DTE 系列温度控制器操作手册整理，涵盖所有 Modbus 通信寄存器地址。<br>
+            • <span class="addr-hex">H1000</span> 格式为十六进制地址，<span class="addr-dec">4096</span> 格式为十进制地址（对应 Modbus 协议中的寄存器编号）。<br>
+            • Modbus 功能码：H03 = 读取寄存器（最多8个word）；H06 = 写入单个word。<br>
+            • 支持 ASCII 和 RTU 两种通信格式，默认 9600bps, 7bits, Even, 1 stop bit, 站号 01。
+        </div>
+
+        <!-- ==================== 基本参数表 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">一、基本参数（PV / SV / 量程 / 补偿 / PID）</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>十六进制地址</th>
+                            <th>十进制地址</th>
+                            <th>CH1</th>
+                            <th>CH2</th>
+                            <th>CH3</th>
+                            <th>CH4</th>
+                            <th>CH5</th>
+                            <th>CH6</th>
+                            <th>CH7</th>
+                            <th>CH8</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="category-header"><td colspan="12">PV / SV 温度值</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>PV 目前温度值</td>
+                            <td>单位 0.1℃</td>
+                            <td class="addr-hex">H1000~H1007</td>
+                            <td class="addr-dec">4096~4103</td>
+                            <td>H1000</td><td>H1001</td><td>H1002</td><td>H1003</td>
+                            <td>H1004</td><td>H1005</td><td>H1006</td><td>H1007</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>SV 温度设定值</td>
+                            <td>单位 0.1℃</td>
+                            <td class="addr-hex">H1008~H100F</td>
+                            <td class="addr-dec">4104~4111</td>
+                            <td>H1008</td><td>H1009</td><td>H100A</td><td>H100B</td>
+                            <td>H100C</td><td>H100D</td><td>H100E</td><td>H100F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">温度侦测范围</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>输入上限值</td>
+                            <td>超过默认值禁止</td>
+                            <td class="addr-hex">H1010~H1017</td>
+                            <td class="addr-dec">4112~4119</td>
+                            <td>H1010</td><td>H1011</td><td>H1012</td><td>H1013</td>
+                            <td>H1014</td><td>H1015</td><td>H1016</td><td>H1017</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>输入下限值</td>
+                            <td>低于默认值禁止</td>
+                            <td class="addr-hex">H1018~H101F</td>
+                            <td class="addr-dec">4120~4127</td>
+                            <td>H1018</td><td>H1019</td><td>H101A</td><td>H101B</td>
+                            <td>H101C</td><td>H101D</td><td>H101E</td><td>H101F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">输入补偿与增益</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>输入补偿值</td>
+                            <td>-999~+999 (0.1℃)</td>
+                            <td class="addr-hex">H1020~H1027</td>
+                            <td class="addr-dec">4128~4135</td>
+                            <td>H1020</td><td>H1021</td><td>H1022</td><td>H1023</td>
+                            <td>H1024</td><td>H1025</td><td>H1026</td><td>H1027</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>输入增益值</td>
+                            <td>增益调整</td>
+                            <td class="addr-hex">H19B8~H19BF</td>
+                            <td class="addr-dec">6584~6591</td>
+                            <td>H19B8</td><td>H19B9</td><td>H19BA</td><td>H19BB</td>
+                            <td>H19BC</td><td>H19BD</td><td>H19BE</td><td>H19BF</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">PID 参数</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>Pb 比例带定值</td>
+                            <td>0~9999 (0.1)</td>
+                            <td class="addr-hex">H1028~H102F</td>
+                            <td class="addr-dec">4136~4143</td>
+                            <td>H1028</td><td>H1029</td><td>H102A</td><td>H102B</td>
+                            <td>H102C</td><td>H102D</td><td>H102E</td><td>H102F</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>Ti 积分时间常数</td>
+                            <td>0~9999</td>
+                            <td class="addr-hex">H1030~H1037</td>
+                            <td class="addr-dec">4144~4151</td>
+                            <td>H1030</td><td>H1031</td><td>H1032</td><td>H1033</td>
+                            <td>H1034</td><td>H1035</td><td>H1036</td><td>H1037</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>Td 微分时间常数</td>
+                            <td>0~9999</td>
+                            <td class="addr-hex">H1038~H103F</td>
+                            <td class="addr-dec">4152~4159</td>
+                            <td>H1038</td><td>H1039</td><td>H103A</td><td>H103B</td>
+                            <td>H103C</td><td>H103D</td><td>H103E</td><td>H103F</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>积分量默认值</td>
+                            <td>0.0~100.0% (0.1%)</td>
+                            <td class="addr-hex">H1040~H1047</td>
+                            <td class="addr-dec">4160~4167</td>
+                            <td>H1040</td><td>H1041</td><td>H1042</td><td>H1043</td>
+                            <td>H1044</td><td>H1045</td><td>H1046</td><td>H1047</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>比例控制误差补偿值</td>
+                            <td>Ti=0 时设定 (0.1%)</td>
+                            <td class="addr-hex">H1048~H104F</td>
+                            <td class="addr-dec">4168~4175</td>
+                            <td>H1048</td><td>H1049</td><td>H104A</td><td>H104B</td>
+                            <td>H104C</td><td>H104D</td><td>H104E</td><td>H104F</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 输出与警报 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">二、输出控制与警报参数</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>十六进制地址</th>
+                            <th>十进制地址</th>
+                            <th>CH1</th>
+                            <th>CH2</th>
+                            <th>CH3</th>
+                            <th>CH4</th>
+                            <th>CH5</th>
+                            <th>CH6</th>
+                            <th>CH7</th>
+                            <th>CH8</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="category-header"><td colspan="12">比例输出参数</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>OUT1/OUT2 输出比例带比值</td>
+                            <td>0.01~99.99</td>
+                            <td class="addr-hex">H1050~H1057</td>
+                            <td class="addr-dec">4176~4183</td>
+                            <td>H1050</td><td>H1051</td><td>H1052</td><td>H1053</td>
+                            <td>H1054</td><td>H1055</td><td>H1056</td><td>H1057</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>输出重叠温度范围</td>
+                            <td>-99.9~999.9</td>
+                            <td class="addr-hex">H1058~H105F</td>
+                            <td class="addr-dec">4184~4191</td>
+                            <td>H1058</td><td>H1059</td><td>H105A</td><td>H105B</td>
+                            <td>H105C</td><td>H105D</td><td>H105E</td><td>H105F</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>第一组输出调节感度</td>
+                            <td>0~9999 (0.1%)</td>
+                            <td class="addr-hex">H1060~H1067</td>
+                            <td class="addr-dec">4192~4199</td>
+                            <td>H1060</td><td>H1061</td><td>H1062</td><td>H1063</td>
+                            <td>H1064</td><td>H1065</td><td>H1066</td><td>H1067</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>第二组输出调节感度</td>
+                            <td>0~9999 (0.1%)</td>
+                            <td class="addr-hex">H1068~H106F</td>
+                            <td class="addr-dec">4200~4207</td>
+                            <td>H1068</td><td>H1069</td><td>H106A</td><td>H106B</td>
+                            <td>H106C</td><td>H106D</td><td>H106E</td><td>H106F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">手动输出量（Manual Mode）</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>读写第一组输出量</td>
+                            <td>单位 0.1%</td>
+                            <td class="addr-hex">H1070~H1077</td>
+                            <td class="addr-dec">4208~4215</td>
+                            <td>H1070</td><td>H1071</td><td>H1072</td><td>H1073</td>
+                            <td>H1074</td><td>H1075</td><td>H1076</td><td>H1077</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>读写第二组输出量</td>
+                            <td>单位 0.1%</td>
+                            <td class="addr-hex">H1078~H107F</td>
+                            <td class="addr-dec">4216~4223</td>
+                            <td>H1078</td><td>H1079</td><td>H107A</td><td>H107B</td>
+                            <td>H107C</td><td>H107D</td><td>H107E</td><td>H107F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">警报上下限值</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>警报上限值 (AL-H)</td>
+                            <td>温度超过上限动作</td>
+                            <td class="addr-hex">H1080~H1087</td>
+                            <td class="addr-dec">4224~4231</td>
+                            <td>H1080</td><td>H1081</td><td>H1082</td><td>H1083</td>
+                            <td>H1084</td><td>H1085</td><td>H1086</td><td>H1087</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>警报下限值 (AL-L)</td>
+                            <td>温度低于下限动作</td>
+                            <td class="addr-hex">H1088~H108F</td>
+                            <td class="addr-dec">4232~4239</td>
+                            <td>H1088</td><td>H1089</td><td>H108A</td><td>H108B</td>
+                            <td>H108C</td><td>H108D</td><td>H108E</td><td>H108F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">模拟输出微调</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>模拟输出上限微调</td>
+                            <td>电流/电压输出调整</td>
+                            <td class="addr-hex">H1090~H1097</td>
+                            <td class="addr-dec">4240~4247</td>
+                            <td>H1090</td><td>H1091</td><td>H1092</td><td>H1093</td>
+                            <td>H1094</td><td>H1095</td><td>H1096</td><td>H1097</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>模拟输出下限微调</td>
+                            <td>电流/电压输出调整</td>
+                            <td class="addr-hex">H1098~H109F</td>
+                            <td class="addr-dec">4248~4255</td>
+                            <td>H1098</td><td>H1099</td><td>H109A</td><td>H109B</td>
+                            <td>H109C</td><td>H109D</td><td>H109E</td><td>H109F</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 功能选择 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">三、功能选择参数</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>十六进制地址</th>
+                            <th>十进制地址</th>
+                            <th>CH1</th>
+                            <th>CH2</th>
+                            <th>CH3</th>
+                            <th>CH4</th>
+                            <th>CH5</th>
+                            <th>CH6</th>
+                            <th>CH7</th>
+                            <th>CH8</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="ch-group-ina">
+                            <td>输入传感器类型</td>
+                            <td>0=K-type, 1=J, 2=T, 3=E, 4=N, 5=R, 6=S, 7=B, 8=L, 9=U, 10=TXK, 11=JPt100, 12=Pt100, 13=Ni120, 14=Cu50</td>
+                            <td class="addr-hex">H10A0~H10A7</td>
+                            <td class="addr-dec">4256~4263</td>
+                            <td>H10A0</td><td>H10A1</td><td>H10A2</td><td>H10A3</td>
+                            <td>H10A4</td><td>H10A5</td><td>H10A6</td><td>H10A7</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>OUT1/OUT2 输出功能</td>
+                            <td>0=逆向(加热), 1=正向(冷却), 2=比例输出, 3=禁能</td>
+                            <td class="addr-hex">H10A8~H10AF</td>
+                            <td class="addr-dec">4264~4271</td>
+                            <td>H10A8</td><td>H10A9</td><td>H10AA</td><td>H10AB</td>
+                            <td>H10AC</td><td>H10AD</td><td>H10AE</td><td>H10AF</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>SUB1/SUB2 输出功能</td>
+                            <td>0=逆向(加热), 1=正向(冷却), 2=警报输出, 3=禁能</td>
+                            <td class="addr-hex">H10B0~H10B7</td>
+                            <td class="addr-dec">4272~4279</td>
+                            <td>H10B0</td><td>H10B1</td><td>H10B2</td><td>H10B3</td>
+                            <td>H10B4</td><td>H10B5</td><td>H10B6</td><td>H10B7</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>控制方式</td>
+                            <td>0=PID, 1=ON-OFF, 2=Manual, 3=可程序PID</td>
+                            <td class="addr-hex">H10B8~H10BF</td>
+                            <td class="addr-dec">4280~4287</td>
+                            <td>H10B8</td><td>H10B9</td><td>H10BA</td><td>H10BB</td>
+                            <td>H10BC</td><td>H10BD</td><td>H10BE</td><td>H10BF</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>警报一输出模式</td>
+                            <td>0~13 (见警报模式表)</td>
+                            <td class="addr-hex">H10C0~H10C7</td>
+                            <td class="addr-dec">4288~4295</td>
+                            <td>H10C0</td><td>H10C1</td><td>H10C2</td><td>H10C3</td>
+                            <td>H10C4</td><td>H10C5</td><td>H10C6</td><td>H10C7</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>警报二输出模式</td>
+                            <td>0~13 (见警报模式表)</td>
+                            <td class="addr-hex">H10C8~H10CF</td>
+                            <td class="addr-dec">4296~4303</td>
+                            <td>H10C8</td><td>H10C9</td><td>H10CA</td><td>H10CB</td>
+                            <td>H10CC</td><td>H10CD</td><td>H10CE</td><td>H10CF</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>加热/冷却控制周期</td>
+                            <td>1~99秒, 0=0.5秒</td>
+                            <td class="addr-hex">H10D0~H10D7</td>
+                            <td class="addr-dec">4304~4311</td>
+                            <td>H10D0</td><td>H10D1</td><td>H10D2</td><td>H10D3</td>
+                            <td>H10D4</td><td>H10D5</td><td>H10D6</td><td>H10D7</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>控制执行/停止设定</td>
+                            <td>0=停止, 1=执行中, 2=程序结束, 3=程序暂停</td>
+                            <td class="addr-hex">H10D8~H10DF</td>
+                            <td class="addr-dec">4312~4319</td>
+                            <td>H10D8</td><td>H10D9</td><td>H10DA</td><td>H10DB</td>
+                            <td>H10DC</td><td>H10DD</td><td>H10DE</td><td>H10DF</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>PID 自动调谐状态</td>
+                            <td>0=停止, 1=执行中</td>
+                            <td class="addr-hex">H10E0~H10E7</td>
+                            <td class="addr-dec">4320~4327</td>
+                            <td>H10E0</td><td>H10E1</td><td>H10E2</td><td>H10E3</td>
+                            <td>H10E4</td><td>H10E5</td><td>H10E6</td><td>H10E7</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>设定正负比例输出</td>
+                            <td>0=正, 1=负(斜率)</td>
+                            <td class="addr-hex">H10E8~H10EF</td>
+                            <td class="addr-dec">4328~4335</td>
+                            <td>H10E8</td><td>H10E9</td><td>H10EA</td><td>H10EB</td>
+                            <td>H10EC</td><td>H10ED</td><td>H10EE</td><td>H10EF</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 系统参数 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">四、系统参数与通信设置</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>十六进制地址</th>
+                            <th>十进制地址</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>温度单位设定</td>
+                            <td>0=℃, 1=℉</td>
+                            <td class="addr-hex">H10F0</td>
+                            <td class="addr-dec">4336</td>
+                            <td>系统参数</td>
+                        </tr>
+                        <tr>
+                            <td>打开特殊功能</td>
+                            <td>写入 H1234 启用</td>
+                            <td class="addr-hex">H10F1</td>
+                            <td class="addr-dec">4337</td>
+                            <td>写入 1234H 后可使用特殊功能地址</td>
+                        </tr>
+                        <tr>
+                            <td>回复出厂值</td>
+                            <td>写入 H1357 执行</td>
+                            <td class="addr-hex">H10F2</td>
+                            <td class="addr-dec">4338</td>
+                            <td>写入 1357H 后重启生效</td>
+                        </tr>
+                        <tr>
+                            <td>通道禁能</td>
+                            <td>Bit0~Bit7 对应 CH1~CH8</td>
+                            <td class="addr-hex">H10F6</td>
+                            <td class="addr-dec">4342</td>
+                            <td>1=禁能, 0=使能</td>
+                        </tr>
+                        <tr>
+                            <td>滤波次数</td>
+                            <td>0~50 (默认 8)</td>
+                            <td class="addr-hex">H10F7</td>
+                            <td class="addr-dec">4343</td>
+                            <td>滤波次数越大越平滑</td>
+                        </tr>
+                        <tr>
+                            <td>自动站号设定</td>
+                            <td>写入 1 启用自动规划</td>
+                            <td class="addr-hex">H10F8</td>
+                            <td class="addr-dec">4344</td>
+                            <td>需配合 DTC2000/2001 扩充机</td>
+                        </tr>
+                        <tr>
+                            <td>滤波范围</td>
+                            <td>0.1~10.0 (默认 1.0)</td>
+                            <td class="addr-hex">H10F9</td>
+                            <td class="addr-dec">4345</td>
+                            <td>PV 显示滤波范围</td>
+                        </tr>
+                        <tr>
+                            <td>通讯速度</td>
+                            <td>0~6 对应 2400~115200bps</td>
+                            <td class="addr-hex">H10FA</td>
+                            <td class="addr-dec">4346</td>
+                            <td>默认 2 (9600bps)</td>
+                        </tr>
+                        <tr>
+                            <td>通讯格式</td>
+                            <td>0=ASCII, 1=RTU</td>
+                            <td class="addr-hex">H10FB</td>
+                            <td class="addr-dec">4347</td>
+                            <td>默认 0 (ASCII)</td>
+                        </tr>
+                        <tr>
+                            <td>数据位</td>
+                            <td>0=8bits, 1=7bits</td>
+                            <td class="addr-hex">H10FC</td>
+                            <td class="addr-dec">4348</td>
+                            <td>默认 1 (7bits)</td>
+                        </tr>
+                        <tr>
+                            <td>停止位</td>
+                            <td>0=2stop, 1=1stop</td>
+                            <td class="addr-hex">H10FD</td>
+                            <td class="addr-dec">4349</td>
+                            <td>默认 1 (1stop)</td>
+                        </tr>
+                        <tr>
+                            <td>同位检查</td>
+                            <td>0=None, 1=Even, 2=Odd</td>
+                            <td class="addr-hex">H10FE</td>
+                            <td class="addr-dec">4350</td>
+                            <td>默认 1 (Even)</td>
+                        </tr>
+                        <tr>
+                            <td>站号</td>
+                            <td>1~247</td>
+                            <td class="addr-hex">H10FF</td>
+                            <td class="addr-dec">4351</td>
+                            <td>默认 01</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 特殊功能 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">五、特殊功能参数（需先写入 H1234 到 H10F1）</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>说明</th>
+                            <th>十六进制地址</th>
+                            <th>十进制地址</th>
+                            <th>CH1</th>
+                            <th>CH2</th>
+                            <th>CH3</th>
+                            <th>CH4</th>
+                            <th>CH5</th>
+                            <th>CH6</th>
+                            <th>CH7</th>
+                            <th>CH8</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="category-header"><td colspan="12">斜率控制</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>斜率设定</td>
+                            <td>单位 0.1℃/min</td>
+                            <td class="addr-hex">H1970~H1977</td>
+                            <td class="addr-dec">6512~6519</td>
+                            <td>H1970</td><td>H1971</td><td>H1972</td><td>H1973</td>
+                            <td>H1974</td><td>H1975</td><td>H1976</td><td>H1977</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">可程控时间单位</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>时间单位选择</td>
+                            <td>0=分(默认), 1=秒</td>
+                            <td class="addr-hex">H1978~H197F</td>
+                            <td class="addr-dec">6520~6527</td>
+                            <td>H1978</td><td>H1979</td><td>H197A</td><td>H197B</td>
+                            <td>H197C</td><td>H197D</td><td>H197E</td><td>H197F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">热流道控制</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>界限温度</td>
+                            <td>单位 0.1℃</td>
+                            <td class="addr-hex">H1960~H1967</td>
+                            <td class="addr-dec">6496~6503</td>
+                            <td>H1960</td><td>H1961</td><td>H1962</td><td>H1963</td>
+                            <td>H1964</td><td>H1965</td><td>H1966</td><td>H1967</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>固定输出量</td>
+                            <td>单位 0.1%</td>
+                            <td class="addr-hex">H1968~H196F</td>
+                            <td class="addr-dec">6504~6511</td>
+                            <td>H1968</td><td>H1969</td><td>H196A</td><td>H196B</td>
+                            <td>H196C</td><td>H196D</td><td>H196E</td><td>H196F</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>定时时间(Soak)</td>
+                            <td>单位 分</td>
+                            <td class="addr-hex">H19B0~H19B7</td>
+                            <td class="addr-dec">6576~6583</td>
+                            <td>H19B0</td><td>H19B1</td><td>H19B2</td><td>H19B3</td>
+                            <td>H19B4</td><td>H19B5</td><td>H19B6</td><td>H19B7</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">控制输出限制</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>输出最大值</td>
+                            <td>单位 %</td>
+                            <td class="addr-hex">H1980~H1987</td>
+                            <td class="addr-dec">6528~6535</td>
+                            <td>H1980</td><td>H1981</td><td>H1982</td><td>H1983</td>
+                            <td>H1984</td><td>H1985</td><td>H1986</td><td>H1987</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>输出最小值</td>
+                            <td>单位 %</td>
+                            <td class="addr-hex">H1988~H198F</td>
+                            <td class="addr-dec">6536~6543</td>
+                            <td>H1988</td><td>H1989</td><td>H198A</td><td>H198B</td>
+                            <td>H198C</td><td>H198D</td><td>H198E</td><td>H198F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">警报延迟</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>警报延迟时间</td>
+                            <td>单位 秒</td>
+                            <td class="addr-hex">H1990~H1997</td>
+                            <td class="addr-dec">6544~6551</td>
+                            <td>H1990</td><td>H1991</td><td>H1992</td><td>H1993</td>
+                            <td>H1994</td><td>H1995</td><td>H1996</td><td>H1997</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">EVENT 功能</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>EVENT 功能项目</td>
+                            <td>0=无, 1=执行/停止, 2=SV1/SV2, 3=自动/手动, 4=执行/暂停</td>
+                            <td class="addr-hex">H1998~H199F</td>
+                            <td class="addr-dec">6552~6559</td>
+                            <td>H1998</td><td>H1999</td><td>H199A</td><td>H199B</td>
+                            <td>H199C</td><td>H199D</td><td>H199E</td><td>H199F</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">CT 电流检知</td></tr>
+                        <tr class="ch-group-ina">
+                            <td>CT 量测值 (保持)</td>
+                            <td>电流检知保持值</td>
+                            <td class="addr-hex">H19A0~H19A3</td>
+                            <td class="addr-dec">6560~6563</td>
+                            <td>H19A0</td><td>H19A1</td><td>H19A2</td><td>H19A3</td>
+                            <td colspan="4">仅 INA (CH1~CH4)</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>CT 量测值 (动态)</td>
+                            <td>电流检知实时值</td>
+                            <td class="addr-hex">H19A4~H19A7</td>
+                            <td class="addr-dec">6564~6567</td>
+                            <td>H19A4</td><td>H19A5</td><td>H19A6</td><td>H19A7</td>
+                            <td colspan="4">仅 INA (CH1~CH4)</td>
+                        </tr>
+                        <tr class="ch-group-ina">
+                            <td>CT 调整值</td>
+                            <td>电流检知调整</td>
+                            <td class="addr-hex">H19A8~H19AB</td>
+                            <td class="addr-dec">6568~6571</td>
+                            <td>H19A8</td><td>H19A9</td><td>H19AA</td><td>H19AB</td>
+                            <td colspan="4">仅 INA (CH1~CH4)</td>
+                        </tr>
+                        <tr class="category-header"><td colspan="12">功能旗标 (系统级)</td></tr>
+                        <tr>
+                            <td>特殊功能启用</td>
+                            <td>写入 1234H 启用特殊功能</td>
+                            <td class="addr-hex">H47F1</td>
+                            <td class="addr-dec">18417</td>
+                            <td colspan="8">写入 1234H 后方可操作 H4824 等地址</td>
+                        </tr>
+                        <tr>
+                            <td>功能旗标</td>
+                            <td>Bit1=EVENT, Bit2=CT, Bit3=断电储存, Bit5=斜率, Bit6=热流道</td>
+                            <td class="addr-hex">H4824</td>
+                            <td class="addr-dec">18468</td>
+                            <td colspan="8">Bit 位控制各特殊功能开关</td>
+                        </tr>
+                        <tr>
+                            <td>输出反向设定</td>
+                            <td>Bit0~Bit7 对应 CH1~CH8 输出反向</td>
+                            <td class="addr-hex">H4821</td>
+                            <td class="addr-dec">18465</td>
+                            <td colspan="8">1=输出反向(0↔1)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 警报模式 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">六、警报模式对照表</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>设定值</th>
+                            <th>警报模式</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>0</td><td>无警报功能</td><td>输出不动作</td></tr>
+                        <tr><td>1</td><td>上下限警报</td><td>PV 超过 SV+AL-H 或低于 SV-AL-L 时动作</td></tr>
+                        <tr><td>2</td><td>上限警报</td><td>PV 超过 SV+AL-H 时动作</td></tr>
+                        <tr><td>3</td><td>下限警报</td><td>PV 低于 SV-AL-L 时动作</td></tr>
+                        <tr><td>4</td><td>上下限警报逆动作</td><td>PV 在 SV+AL-H 与 SV-AL-L 之间时动作</td></tr>
+                        <tr><td>5</td><td>绝对值上下限警报</td><td>PV 超过 AL-H 或低于 AL-L 时动作</td></tr>
+                        <tr><td>6</td><td>绝对值上限警报</td><td>PV 超过 AL-H 时动作</td></tr>
+                        <tr><td>7</td><td>绝对值下限警报</td><td>PV 低于 AL-L 时动作</td></tr>
+                        <tr><td>8</td><td>待机上下限警报</td><td>PV 到达设定值后，超过 SV+AL-H 或低于 SV-AL-L 时动作</td></tr>
+                        <tr><td>9</td><td>待机上限警报</td><td>PV 到达设定值后，超过 SV+AL-H 时动作</td></tr>
+                        <tr><td>10</td><td>待机下限警报</td><td>PV 到达设定值后，低于 SV-AL-L 时动作</td></tr>
+                        <tr><td>11</td><td>迟滞上限警报</td><td>PV 超过 SV+AL-H 动作，低于 SV+AL-L 消失</td></tr>
+                        <tr><td>12</td><td>迟滞下限警报</td><td>PV 低于 SV-AL-H 动作，高于 SV-AL-L 消失</td></tr>
+                        <tr><td>13</td><td>CT 警报</td><td>CT 值低于 AL-L 或高于 AL-H 时动作</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 通信参数 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">七、通信参数设定对照表</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>参数</th>
+                            <th>0</th>
+                            <th>1</th>
+                            <th>2</th>
+                            <th>3</th>
+                            <th>4</th>
+                            <th>5</th>
+                            <th>6</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>通讯速度 (H10FA)</strong></td>
+                            <td>2,400bps</td>
+                            <td>4,800bps</td>
+                            <td>9,600bps</td>
+                            <td>19,200bps</td>
+                            <td>38,400bps</td>
+                            <td>57,600bps</td>
+                            <td>115,200bps</td>
+                        </tr>
+                        <tr>
+                            <td><strong>同位 (H10FE)</strong></td>
+                            <td>无同位 (N)</td>
+                            <td>偶同位 (E)</td>
+                            <td>奇同位 (O)</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 错误码 ==================== -->
+        <div class="table-wrapper">
+            <div class="section-title">八、错误码对照表</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>错误码 (Hex)</th>
+                            <th>十进制</th>
+                            <th>错误内容</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="addr-hex">H8001</td><td class="addr-dec">32769</td><td>EEPROM 无法写入</td></tr>
+                        <tr><td class="addr-hex">H8002</td><td class="addr-dec">32770</td><td>输入传感器未接</td></tr>
+                        <tr><td class="addr-hex">H8003</td><td class="addr-dec">32771</td><td>INB 群组未接</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            数据来源：台达 DTE 系列温度控制器操作手册 (DELTA_IA-TC_DTE10T_OM_SC_20190122)<br>
+            整理日期：2025年 | 本表仅供参考，请以官方最新手册为准
+        </div>
+    </div>
+</body>
+</html>

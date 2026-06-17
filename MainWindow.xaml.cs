@@ -1,3 +1,6 @@
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,21 +10,26 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using OxyPlot;
-using OxyPlot.Axes;
-using OxyPlot.Series;
+using System.ComponentModel;
 
 namespace DTE10T_WPF
 {
     public partial class MainWindow : Window
     {
-        // ========== OxyPlot 图表相关 ==========
-        private PlotModel? _temperaturePlotModel;
-        private LineSeries[]? _channelSeries;
         private const int MaxDataPoints = 100;
-        private bool _isChartPaused = false;
-        private double _chartTimeOffset = 0;
-        private DateTime _chartStartTime;
+
+        private static readonly string[] AlarmModeNames = new[]
+        {
+            "无警报", "上下限警报", "上限警报", "下限警报",
+            "上下限逆动作", "绝对值上下限", "绝对值上限", "绝对值下限",
+            "待机上下限", "待机上限", "待机下限", "迟滞上限",
+            "迟滞下限", "CT警报"
+        };
+
+        private static readonly string[] BaudRateNames = new[]
+        {
+            "2400", "4800", "9600", "19200", "38400", "57600", "115200"
+        };
 
         // 各通道曲线颜色
         private static readonly OxyColor[] ChannelColors = new[]
@@ -34,18 +42,6 @@ namespace DTE10T_WPF
             OxyColors.Cyan,
             OxyColors.Magenta,
             OxyColors.Gold
-        };
-        private static readonly string[] AlarmModeNames = new[]
-        {
-            "无警报", "上下限警报", "上限警报", "下限警报",
-            "上下限逆动作", "绝对值上下限", "绝对值上限", "绝对值下限",
-            "待机上下限", "待机上限", "待机下限", "迟滞上限",
-            "迟滞下限", "CT警报"
-        };
-
-        private static readonly string[] BaudRateNames = new[]
-        {
-            "2400", "4800", "9600", "19200", "38400", "57600", "115200"
         };
 
         private static readonly string[] ControlModeNames = new[]
@@ -76,12 +72,20 @@ namespace DTE10T_WPF
             "L型热电偶", "U型热电偶", "TXK型", "白金JPt100",
             "白金Pt100", "Ni120", "Cu50"
         };
+        private LineSeries[]? _channelSeries;
+        private DateTime _chartStartTime;
+        private double _chartTimeOffset = 0;
+        private bool _isChartPaused = false;
         private bool _isConnected = false;
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
         private System.Threading.Timer? _pollTimer;
         private int _readCount = 0;
+        // ========== OxyPlot 图表相关 ==========
+        private PlotModel? _temperaturePlotModel;
+        // ========== 配置管理 ==========
+        private bool _isConfigSaving = false;
 
         public MainWindow()
         {
@@ -91,200 +95,12 @@ namespace DTE10T_WPF
             LoadAvailablePorts();
             InitializeChart();
             DataContext = this;
+            
+            LoadConfigIfExists();
+            SetupConfigChangeListeners();
         }
 
-        ///<summary>
-        /// 加载可用的串口列表
-        ///</summary>
-        private void LoadAvailablePorts()
-        {
-            try
-            {
-                cmbComPort.Items.Clear();
-                string[] ports = SerialPort.GetPortNames();
-                
-                if (ports.Length == 0)
-                {
-                    cmbComPort.Items.Add(new ComboBoxItem { Content = "无可用串口" });
-                    cmbComPort.IsEnabled = false;
-                }
-                else
-                {
-                    foreach (string port in ports.OrderBy(p => p))
-                    {
-                        cmbComPort.Items.Add(new ComboBoxItem { Content = port });
-                    }
-                    cmbComPort.SelectedIndex = 0;
-                    cmbComPort.IsEnabled = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadPorts] 加载串口列表异常: {ex.Message}");
-                MessageBox.Show($"加载串口列表时发生异常\n\n错误信息: {ex.Message}", 
-                    "串口加载错误", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Error);
-            }
-        }
-
-        // ========== OxyPlot 图表初始化 ==========
-        private void InitializeChart()
-        {
-            _temperaturePlotModel = new PlotModel
-            {
-                Title = "实时温度曲线",
-                Background = OxyColors.White,
-                PlotAreaBorderColor = OxyColors.LightGray,
-                TitleFont = "微软雅黑",
-                TitleFontSize = 14
-            };
-
-            var timeAxis = new LinearAxis
-            {
-                Position = AxisPosition.Bottom,
-                Title = "时间 (s)",
-                Minimum = 0,
-                Maximum = 60,
-                MajorGridlineStyle = LineStyle.Solid,
-                MinorGridlineStyle = LineStyle.Dot,
-                MajorGridlineColor = OxyColors.LightGray,
-                MinorGridlineColor = OxyColors.LightGray,
-                TitleFont = "微软雅黑",
-                TitleFontSize = 12,
-                Font = "微软雅黑",
-                FontSize = 11
-            };
-            _temperaturePlotModel.Axes.Add(timeAxis);
-
-            var tempAxis = new LinearAxis
-            {
-                Position = AxisPosition.Left,
-                Title = "温度 (℃)",
-                Minimum = -50,
-                Maximum = 500,
-                MajorGridlineStyle = LineStyle.Solid,
-                MinorGridlineStyle = LineStyle.Dot,
-                MajorGridlineColor = OxyColors.LightGray,
-                MinorGridlineColor = OxyColors.LightGray,
-                TitleFont = "微软雅黑",
-                TitleFontSize = 12,
-                Font = "微软雅黑",
-                FontSize = 11
-            };
-            _temperaturePlotModel.Axes.Add(tempAxis);
-
-            _channelSeries = new LineSeries[8];
-            for (int i = 0; i < 8; i++)
-            {
-                _channelSeries[i] = new LineSeries
-                {
-                    Title = $"CH{i + 1}",
-                    Color = ChannelColors[i],
-                    StrokeThickness = 2,
-                    MarkerType = MarkerType.None,
-                    IsVisible = i < 4
-                };
-                _temperaturePlotModel.Series.Add(_channelSeries[i]);
-            }
-
-            _chartStartTime = DateTime.Now;
-        }
-
-        private void UpdateChart()
-        {
-            if (_isChartPaused || _channelSeries == null || _temperaturePlotModel == null)
-                return;
-
-            double currentTime = (DateTime.Now - _chartStartTime).TotalSeconds + _chartTimeOffset;
-
-            for (int i = 0; i < 8; i++)
-            {
-                CheckBox? chkBox = FindName($"chkCH{i + 1}") as CheckBox;
-                bool isVisible = chkBox?.IsChecked ?? false;
-                _channelSeries[i].IsVisible = isVisible;
-
-                if (!isVisible) continue;
-
-                double pvValue = TempCards[i].PV;
-                _channelSeries[i].Points.Add(new DataPoint(currentTime, pvValue));
-
-                if (_channelSeries[i].Points.Count > MaxDataPoints)
-                {
-                    _channelSeries[i].Points.RemoveAt(0);
-                }
-            }
-
-            if (_temperaturePlotModel.Axes.Count > 0)
-            {
-                var timeAxis = _temperaturePlotModel.Axes[0] as LinearAxis;
-                if (timeAxis != null)
-                {
-                    timeAxis.Minimum = currentTime - 60;
-                    timeAxis.Maximum = currentTime + 5;
-                    if (timeAxis.Minimum < 0) timeAxis.Minimum = 0;
-                }
-            }
-
-            _temperaturePlotModel.InvalidatePlot(true);
-        }
-
-        private void ClearChart()
-        {
-            if (_channelSeries != null)
-            {
-                foreach (var series in _channelSeries)
-                {
-                    series.Points.Clear();
-                }
-            }
-            _chartStartTime = DateTime.Now;
-            _chartTimeOffset = 0;
-
-            if (_temperaturePlotModel != null)
-            {
-                _temperaturePlotModel.InvalidatePlot(true);
-            }
-        }
-
-        private void ToggleChartPause()
-        {
-            _isChartPaused = !_isChartPaused;
-            btnPauseChart.Content = _isChartPaused ? "继续" : "暂停";
-
-            if (!_isChartPaused)
-            {
-                _chartStartTime = DateTime.Now;
-                _chartTimeOffset = 0;
-            }
-        }
-
-        public PlotModel? TemperaturePlotModel => _temperaturePlotModel;
-
-        public Visibility ShowChartVisibility => chkShowChart?.IsChecked ?? false ? Visibility.Visible : Visibility.Collapsed;
-
-        private void ChkChannel_CheckedChanged(object sender, RoutedEventArgs e)
-        {
-            UpdateChart();
-        }
-
-        private void ChkShowChart_CheckedChanged(object sender, RoutedEventArgs e)
-        {
-            if (chkShowChart?.IsChecked ?? false)
-            {
-                UpdateChart();
-            }
-        }
-
-        private void BtnClearChart_Click(object sender, RoutedEventArgs e)
-        {
-            ClearChart();
-        }
-
-        private void BtnPauseChart_Click(object sender, RoutedEventArgs e)
-        {
-            ToggleChartPause();
-        }
+        private void BtnClearChart_Click(object sender, RoutedEventArgs e) { ClearChart(); }
 
         // ========== 连接 / 断开 ==========
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
@@ -300,9 +116,10 @@ namespace DTE10T_WPF
                 int baudRate = int.Parse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"));
                 int slaveId = int.Parse(txtStationCode.Text);
 
-                // 获取校验位和停止位
+                // 获取校验位、停止位和协议类型
                 string parity = "Even";  // 默认
                 string stopBits = "1";
+                string protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU";
 
                 _modbus = new ModbusService(
                     slaveId: slaveId,
@@ -310,7 +127,8 @@ namespace DTE10T_WPF
                     baudRate: baudRate,
                     parity: parity,
                     dataBits: 8,
-                    stopBits: stopBits
+                    stopBits: stopBits,
+                    protocol: protocol
                 );
 
                 bool success = await _modbus.ConnectAsync();
@@ -327,22 +145,22 @@ namespace DTE10T_WPF
                     txtConnStatus.Foreground = Brushes.Green;
 
                     string baud = cmbBaudRate.Text;
-                    txtDeviceInfo.Text = $"| 基恩士20站.温控器1 | SlaveID: {slaveId} | {port} | {baud}bps";
+                    txtDeviceInfo.Text = $"| 基恩士20站.温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
 
                     ledPWR.Fill = Brushes.LimeGreen;
 
                     // 连接成功后读取一次全部数据
                     await PollAllData();
 
-                    // 启动定时轮询 (每 2 秒)
-                    _pollTimer = new System.Threading.Timer(PollCallback, null, 2000, 2000);
+                    // 启动定时轮询 (每 1 秒)
+                    _pollTimer = new System.Threading.Timer(PollCallback, null, 1000, 1000);
                 }
                 else
                 {
                     txtStatus.Text = "连接失败";
                     txtStatus.Foreground = Brushes.Red;
                     btnConnect.IsEnabled = true;
-                    MessageBox.Show("无法连接到温控器，请检查:\n1. COM 端口是否正确\n2. 串口是否被占用\n3. 波特率/站号是否匹配", "连接失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    System.Diagnostics.Debug.WriteLine("[Connect] 无法连接到温控器，请检查: COM端口、串口占用、波特率/站号");
                 }
             }
             catch(Exception ex)
@@ -350,7 +168,7 @@ namespace DTE10T_WPF
                 txtStatus.Text = "连接异常";
                 txtStatus.Foreground = Brushes.Red;
                 btnConnect.IsEnabled = true;
-                MessageBox.Show($"连接异常: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"[Connect] 连接异常: {ex.Message}");
             }
         }
 
@@ -367,10 +185,6 @@ namespace DTE10T_WPF
             catch(Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Disconnect] 断开连接异常: {ex.Message}");
-                MessageBox.Show($"断开连接时发生异常\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                    "断开连接错误", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Warning);
             }
             finally
             {
@@ -390,6 +204,8 @@ namespace DTE10T_WPF
             ledERR.Fill = Brushes.Gray;
         }
 
+        private void BtnPauseChart_Click(object sender, RoutedEventArgs e) { ToggleChartPause(); }
+
         private async void BtnRefresh_Click(object sender, RoutedEventArgs e)
         {
             if(_isConnected && _modbus != null)
@@ -402,10 +218,6 @@ namespace DTE10T_WPF
                 catch(Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"[Refresh] 刷新数据异常: {ex.Message}");
-                    MessageBox.Show($"刷新数据时发生异常\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                        "刷新数据错误", 
-                        MessageBoxButton.OK, 
-                        MessageBoxImage.Error);
                 }
                 finally
                 {
@@ -425,6 +237,581 @@ namespace DTE10T_WPF
         {
             chkCH1.IsChecked = chkCH2.IsChecked = chkCH3.IsChecked = chkCH4.IsChecked =
             chkCH5.IsChecked = chkCH6.IsChecked = chkCH7.IsChecked = chkCH8.IsChecked = false;
+        }
+
+        private void ChkChannel_CheckedChanged(object sender, RoutedEventArgs e) { UpdateChart(); }
+
+        private void ChkShowChart_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if(chkShowChart?.IsChecked ?? false)
+            {
+                UpdateChart();
+            }
+        }
+
+        private void ClearChart()
+        {
+            if(_channelSeries != null)
+            {
+                foreach(var series in _channelSeries)
+                {
+                    series.Points.Clear();
+                }
+            }
+            _chartStartTime = DateTime.Now;
+            _chartTimeOffset = 0;
+
+            if(_temperaturePlotModel != null)
+            {
+                _temperaturePlotModel.InvalidatePlot(true);
+            }
+        }
+
+        ///<summary>
+        /// 警报设定表格编辑事件</summary>
+        private async void DgAlarm_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[Alarm] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as AlarmModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "警报模式":
+                        int modeIndex = Array.IndexOf(AlarmModeNames, model.AlarmMode);
+                        if(modeIndex >= 0)
+                        {
+                            await _modbus.SetAlarm1ModeAsync(ch, modeIndex);
+                        }
+
+                        break;
+                    case "上限值":
+                        await _modbus.WriteAlarmHighAsync(ch, model.AlarmHigh);
+                        break;
+                    case "下限值":
+                        await _modbus.WriteAlarmLowAsync(ch, model.AlarmLow);
+                        break;
+                    case "延迟 (s)":
+                        await _modbus.WriteAlarmDelayAsync(ch, model.AlarmDelay);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Alarm] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// CT电流表格编辑事件</summary>
+        private async void DgCT_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[CT] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as CTModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 4)
+            {
+                return; // CT只有CH1-CH4
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                if(columnName == "CT 调整值")
+                {
+                    await _modbus.WriteCTAdjustAsync(ch, model.CTAdjust);
+                    txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                    txtStatus.Foreground = Brushes.Green;
+                }
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[CT] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// EVENT事件表格编辑事件</summary>
+        private async void DgEvent_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[Event] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as EventModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                if(columnName == "EVENT 功能")
+                {
+                    int funcIndex = Array.IndexOf(EventFunctionNames, model.EventFunction);
+                    if(funcIndex >= 0)
+                    {
+                        await _modbus.WriteEventFunctionAsync(ch, funcIndex);
+                        txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                        txtStatus.Foreground = Brushes.Green;
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Event] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// 热流道控制表格编辑事件</summary>
+        private async void DgHotRunner_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[HotRunner] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as HotRunnerModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "界限温度 (0.1℃)":
+                        await _modbus.WriteHRLimitTempAsync(ch, model.LimitTemp);
+                        break;
+                    case "固定输出量 (0.1%)":
+                        await _modbus.WriteHRFixedOutputAsync(ch, model.FixedOutput);
+                        break;
+                    case "定时 (min)":
+                        await _modbus.WriteHRSoakTimeAsync(ch, model.SoakTime);
+                        break;
+                    case "SV 目标 (℃)":
+                        await _modbus.WriteSVAsync(ch, model.SV);
+                        break;
+                    case "斜率 (0.1℃/min)":
+                        await _modbus.WriteSlopeAsync(ch, model.Slope);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[HotRunner] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// 输入调整表格编辑事件</summary>
+        private async void DgInputAdj_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[InputAdj] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as InputAdjModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "补偿值 (0.1℃)":
+                        await _modbus.WriteOffsetAsync(ch, model.Offset);
+                        break;
+                    case "增益 (‰)":
+                        await _modbus.WriteGainAsync(ch, model.Gain);
+                        break;
+                    case "滤波次数":
+                        if(ch == 0) // 滤波次数是全局参数
+                        {
+                            await _modbus.WriteFilterCountAsync(model.FilterCount);
+                        }
+
+                        break;
+                    case "滤波范围":
+                        if(ch == 0) // 滤波范围是全局参数
+                        {
+                            await _modbus.WriteFilterRangeAsync(model.FilterRange);
+                        }
+
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[InputAdj] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// 输出配置表格编辑事件</summary>
+        private async void DgOutput_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[Output] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as OutputModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "OUT1 功能":
+                        int out1Index = Array.IndexOf(OutFunctionNames, model.Out1Function);
+                        if(out1Index >= 0)
+                        {
+                            await _modbus.SetOut1ControlAsync(ch, out1Index);
+                        }
+
+                        break;
+                    case "OUT2 功能":
+                        int out2Index = Array.IndexOf(OutFunctionNames, model.Out2Function);
+                        if(out2Index >= 0)
+                        {
+                            await _modbus.SetOut2ControlAsync(ch, out2Index);
+                        }
+
+                        break;
+                    case "输出上限 (%)":
+                        await _modbus.WriteOutMaxAsync(ch, model.OutMax);
+                        break;
+                    case "输出下限 (%)":
+                        await _modbus.WriteOutMinAsync(ch, model.OutMin);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Output] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// PID 参数表格编辑事件</summary>
+        private async void DgPID_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[PID] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as PIDModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "控制方式":
+                        int modeIndex = Array.IndexOf(ControlModeNames, model.ControlMode);
+                        if(modeIndex >= 0)
+                        {
+                            await _modbus.SetControlModeAsync(ch, modeIndex);
+                        }
+
+                        break;
+                    case "Pb 比例带":
+                        await _modbus.WritePbAsync(ch, model.Pb);
+                        break;
+                    case "Ti 积分 (s)":
+                        await _modbus.WriteTiAsync(ch, model.Ti);
+                        break;
+                    case "Td 微分 (s)":
+                        await _modbus.WriteTdAsync(ch, model.Td);
+                        break;
+                    case "AT自整定":
+                        if(model.ATEnabled)
+                        {
+                            await _modbus.StartATAsync(ch);
+                        }
+                        else
+                        {
+                            await _modbus.StopATAsync(ch);
+                        }
+
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[PID] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// PV/SV 设定表格编辑事件</summary>
+        private async void DgPVSV_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as PVSVModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "SV 设定值 (℃)":
+                        await _modbus.WriteSVAsync(ch, model.SV);
+                        break;
+                    case "量程上限 (℃)":
+                        await _modbus.WriteRangeHighAsync(ch, model.RangeHigh);
+                        break;
+                    case "量程下限 (℃)":
+                        await _modbus.WriteRangeLowAsync(ch, model.RangeLow);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Write] 写入失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// 斜率控制表格编辑事件</summary>
+        private async void DgSlope_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[Slope] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as SlopeModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "SV 目标 (℃)":
+                        await _modbus.WriteSVAsync(ch, model.SV);
+                        break;
+                    case "斜率 (0.1℃/min)":
+                        await _modbus.WriteSlopeAsync(ch, model.Slope);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Slope] 写入失败: {ex.Message}");
+            }
+        }
+
+        // ========== DataGrid 编辑事件处理 ==========
+
+        ///<summary>
+        /// 获取通道索引 (CH1-CH8 -> 0-7)</summary>
+        private int GetChannelIndex(string channelName)
+        {
+            if(string.IsNullOrEmpty(channelName) || !channelName.StartsWith("CH"))
+            {
+                return -1;
+            }
+
+            if(int.TryParse(channelName.Substring(2), out int ch))
+            {
+                return ch - 1;
+            }
+
+            return -1;
         }
 
         // ========== 初始化所有 DataGrid 数据 ==========
@@ -529,6 +916,99 @@ namespace DTE10T_WPF
             dgProgramSteps.ItemsSource = StepList;
         }
 
+        // ========== OxyPlot 图表初始化 ==========
+        private void InitializeChart()
+        {
+            _temperaturePlotModel = new PlotModel
+            {
+                Title = "实时温度曲线",
+                Background = OxyColors.White,
+                PlotAreaBorderColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 14
+            };
+
+            var timeAxis = new LinearAxis
+            {
+                Position = AxisPosition.Bottom,
+                Title = "时间 (s)",
+                Minimum = 0,
+                Maximum = 60,
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.Dot,
+                MajorGridlineColor = OxyColors.LightGray,
+                MinorGridlineColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 12,
+                Font = "微软雅黑",
+                FontSize = 11
+            };
+            _temperaturePlotModel.Axes.Add(timeAxis);
+
+            var tempAxis = new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                Title = "温度 (℃)",
+                Minimum = -50,
+                Maximum = 500,
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.Dot,
+                MajorGridlineColor = OxyColors.LightGray,
+                MinorGridlineColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 12,
+                Font = "微软雅黑",
+                FontSize = 11
+            };
+            _temperaturePlotModel.Axes.Add(tempAxis);
+
+            _channelSeries = new LineSeries[8];
+            for(int i = 0; i < 8; i++)
+            {
+                _channelSeries[i] = new LineSeries
+                {
+                    Title = $"CH{i + 1}",
+                    Color = ChannelColors[i],
+                    StrokeThickness = 2,
+                    MarkerType = MarkerType.None,
+                    IsVisible = i < 4
+                };
+                _temperaturePlotModel.Series.Add(_channelSeries[i]);
+            }
+
+            _chartStartTime = DateTime.Now;
+        }
+
+        ///<summary>
+        /// 加载可用的串口列表</summary>
+        private void LoadAvailablePorts()
+        {
+            try
+            {
+                cmbComPort.Items.Clear();
+                string[] ports = SerialPort.GetPortNames();
+
+                if(ports.Length == 0)
+                {
+                    cmbComPort.Items.Add(new ComboBoxItem { Content = "无可用串口" });
+                    cmbComPort.IsEnabled = false;
+                }
+                else
+                {
+                    foreach(string port in ports.OrderBy(p => p))
+                    {
+                        cmbComPort.Items.Add(new ComboBoxItem { Content = port });
+                    }
+                    cmbComPort.SelectedIndex = 0;
+                    cmbComPort.IsEnabled = true;
+                }
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LoadPorts] 加载串口列表异常: {ex.Message}");
+            }
+        }
+
         // ========== 工具方法 ==========
         private static float ParseFloat(ushort high, ushort low, double scaling)
         {
@@ -580,43 +1060,43 @@ namespace DTE10T_WPF
                 // ===== 4. 读取 PID 参数 =====
                 for(int i = 0; i < 8; i++)
                 {
-                    // Pb (H1028 + i*0x100)
-                    ushort pbHigh = await _modbus.ReadHoldingRegisterAsync(0x1028 + i * 0x100);
-                    ushort pbLow = await _modbus.ReadHoldingRegisterAsync(0x1029 + i * 0x100);
+                    // Pb (H1028~H102F)
+                    ushort pbHigh = await _modbus.ReadHoldingRegisterAsync(0x1028 + i);
+                    ushort pbLow = await _modbus.ReadHoldingRegisterAsync(0x1029 + i);
                     PIDList[i].Pb = Math.Round(ParseFloat(pbHigh, pbLow, 0.1), 1);
 
-                    // Ti (H1030 + i*0x100)
-                    ushort tiHigh = await _modbus.ReadHoldingRegisterAsync(0x1030 + i * 0x100);
-                    ushort tiLow = await _modbus.ReadHoldingRegisterAsync(0x1031 + i * 0x100);
+                    // Ti (H1030~H1037)
+                    ushort tiHigh = await _modbus.ReadHoldingRegisterAsync(0x1030 + i);
+                    ushort tiLow = await _modbus.ReadHoldingRegisterAsync(0x1031 + i);
                     PIDList[i].Ti = Math.Round(ParseFloat(tiHigh, tiLow, 1), 0);
 
-                    // Td (H1038 + i*0x100)
-                    ushort tdHigh = await _modbus.ReadHoldingRegisterAsync(0x1038 + i * 0x100);
-                    ushort tdLow = await _modbus.ReadHoldingRegisterAsync(0x1039 + i * 0x100);
+                    // Td (H1038~H103F)
+                    ushort tdHigh = await _modbus.ReadHoldingRegisterAsync(0x1038 + i);
+                    ushort tdLow = await _modbus.ReadHoldingRegisterAsync(0x1039 + i);
                     PIDList[i].Td = Math.Round(ParseFloat(tdHigh, tdLow, 1), 0);
 
-                    // 积分量 (H1040 + i*0x100)
-                    ushort intHigh = await _modbus.ReadHoldingRegisterAsync(0x1040 + i * 0x100);
-                    ushort intLow = await _modbus.ReadHoldingRegisterAsync(0x1041 + i * 0x100);
+                    // 积分量 (H1040~H1047)
+                    ushort intHigh = await _modbus.ReadHoldingRegisterAsync(0x1040 + i);
+                    ushort intLow = await _modbus.ReadHoldingRegisterAsync(0x1041 + i);
                     PIDList[i].Integral = Math.Round(ParseFloat(intHigh, intLow, 0.1), 1);
 
-                    // 输出1量 (H1070 + i*0x100)
-                    ushort o1High = await _modbus.ReadHoldingRegisterAsync(0x1070 + i * 0x100);
-                    ushort o1Low = await _modbus.ReadHoldingRegisterAsync(0x1071 + i * 0x100);
+                    // 输出1量 (H1070~H1077)
+                    ushort o1High = await _modbus.ReadHoldingRegisterAsync(0x1070 + i);
+                    ushort o1Low = await _modbus.ReadHoldingRegisterAsync(0x1071 + i);
                     PIDList[i].Out1 = Math.Round(ParseFloat(o1High, o1Low, 0.1), 1);
 
-                    // 输出2量 (H1078 + i*0x100)
-                    ushort o2High = await _modbus.ReadHoldingRegisterAsync(0x1078 + i * 0x100);
-                    ushort o2Low = await _modbus.ReadHoldingRegisterAsync(0x1079 + i * 0x100);
+                    // 输出2量 (H1078~H107F)
+                    ushort o2High = await _modbus.ReadHoldingRegisterAsync(0x1078 + i);
+                    ushort o2Low = await _modbus.ReadHoldingRegisterAsync(0x1079 + i);
                     PIDList[i].Out2 = Math.Round(ParseFloat(o2High, o2Low, 0.1), 1);
 
-                    // 控制方式 (H10B8 + i*0x100)
-                    ushort ctrlMode = await _modbus.ReadHoldingRegisterAsync(0x10B8 + i * 0x100);
+                    // 控制方式 (H10B8~H10BF)
+                    ushort ctrlMode = await _modbus.ReadHoldingRegisterAsync(0x10B8 + i);
                     PIDList[i].ControlMode = ctrlMode < ControlModeNames.Length
                         ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
 
-                    // AT 状态 (H10E0 + i*0x100)
-                    ushort atStatus = await _modbus.ReadHoldingRegisterAsync(0x10E0 + i * 0x100);
+                    // AT 状态 (H10E0~H10E7)
+                    ushort atStatus = await _modbus.ReadHoldingRegisterAsync(0x10E0 + i);
                     PIDList[i].ATEnabled = atStatus == 1;
                 }
 
@@ -852,21 +1332,71 @@ namespace DTE10T_WPF
             catch(Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[PollCallback] 定时轮询异常: {ex.Message}");
-                Dispatcher.Invoke(() =>
-                {
-                    MessageBox.Show($"定时轮询时发生异常\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                        "轮询错误", 
-                        MessageBoxButton.OK, 
-                        MessageBoxImage.Error);
-                });
             }
         }
 
         ///<summary>
-        /// 将传感器数值转换为工程值（考虑缩放因子）
-        ///</summary>
+        /// 将传感器数值转换为工程值（考虑缩放因子）</summary>
         private static double ScaleToEngineering(ushort rawValue, double scaling)
         { return Math.Round(rawValue * scaling, 2); }
+
+        private void ToggleChartPause()
+        {
+            _isChartPaused = !_isChartPaused;
+            btnPauseChart.Content = _isChartPaused ? "继续" : "暂停";
+
+            if(!_isChartPaused)
+            {
+                _chartStartTime = DateTime.Now;
+                _chartTimeOffset = 0;
+            }
+        }
+
+        private void UpdateChart()
+        {
+            if(_isChartPaused || _channelSeries == null || _temperaturePlotModel == null)
+            {
+                return;
+            }
+
+            double currentTime = (DateTime.Now - _chartStartTime).TotalSeconds + _chartTimeOffset;
+
+            for(int i = 0; i < 8; i++)
+            {
+                CheckBox? chkBox = FindName($"chkCH{i + 1}") as CheckBox;
+                bool isVisible = chkBox?.IsChecked ?? false;
+                _channelSeries[i].IsVisible = isVisible;
+
+                if(!isVisible)
+                {
+                    continue;
+                }
+
+                double pvValue = TempCards[i].PV;
+                _channelSeries[i].Points.Add(new DataPoint(currentTime, pvValue));
+
+                if(_channelSeries[i].Points.Count > MaxDataPoints)
+                {
+                    _channelSeries[i].Points.RemoveAt(0);
+                }
+            }
+
+            if(_temperaturePlotModel.Axes.Count > 0)
+            {
+                var timeAxis = _temperaturePlotModel.Axes[0] as LinearAxis;
+                if(timeAxis != null)
+                {
+                    timeAxis.Minimum = currentTime - 60;
+                    timeAxis.Maximum = currentTime + 5;
+                    if(timeAxis.Minimum < 0)
+                    {
+                        timeAxis.Minimum = 0;
+                    }
+                }
+            }
+
+            _temperaturePlotModel.InvalidatePlot(true);
+        }
 
         private void UpdateCommParamsUI(Dictionary<string, ushort> commParams)
         {
@@ -899,6 +1429,7 @@ namespace DTE10T_WPF
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             _pollTimer?.Dispose();
+            SaveConfig();
             try
             {
                 _modbus?.Disconnect();
@@ -906,16 +1437,239 @@ namespace DTE10T_WPF
             catch(Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Closing] 窗口关闭时断开连接异常: {ex.Message}");
-                MessageBox.Show($"窗口关闭时发生异常\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                    "关闭错误", 
-                    MessageBoxButton.OK, 
-                    MessageBoxImage.Warning);
             }
             finally
             {
                 _modbus = null;
             }
             base.OnClosing(e);
+        }
+
+        // ========== 配置管理方法 ==========
+        private void LoadConfigIfExists()
+        {
+            if (ConfigManager.ConfigExists())
+            {
+                try
+                {
+                    AppConfig config = ConfigManager.LoadConfig();
+                    
+                    // 加载串口设置
+                    if (config.SerialPortSettings != null)
+                    {
+                        txtStationCode.Text = config.SerialPortSettings.SlaveId.ToString();
+                        
+                        foreach (ComboBoxItem item in cmbBaudRate.Items)
+                        {
+                            if (item.Content.ToString() == config.SerialPortSettings.BaudRate.ToString())
+                            {
+                                cmbBaudRate.SelectedItem = item;
+                                break;
+                            }
+                        }
+                        
+                        foreach (ComboBoxItem item in cmbComPort.Items)
+                        {
+                            if (item.Content.ToString() == config.SerialPortSettings.PortName)
+                            {
+                                cmbComPort.SelectedItem = item;
+                                break;
+                            }
+                        }
+                        
+                        foreach (ComboBoxItem item in cmbProtocol.Items)
+                        {
+                            if (item.Tag?.ToString() == config.SerialPortSettings.Protocol)
+                            {
+                                cmbProtocol.SelectedItem = item;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine("[Config] 配置加载成功");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Config] 加载配置失败: {ex.Message}");
+                }
+            }
+        }
+
+        private void SetupConfigChangeListeners()
+        {
+            // 监听串口设置变化
+            txtStationCode.LostFocus += (sender, e) => SaveConfig();
+            cmbBaudRate.SelectionChanged += (sender, e) => SaveConfig();
+            cmbComPort.SelectionChanged += (sender, e) => SaveConfig();
+            cmbProtocol.SelectionChanged += (sender, e) => SaveConfig();
+            
+            // 监听数据集合变化
+            PVSVList.CollectionChanged += (sender, e) => SaveConfig();
+            PIDList.CollectionChanged += (sender, e) => SaveConfig();
+            AlarmList.CollectionChanged += (sender, e) => SaveConfig();
+            OutputList.CollectionChanged += (sender, e) => SaveConfig();
+            SlopeList.CollectionChanged += (sender, e) => SaveConfig();
+            InputAdjList.CollectionChanged += (sender, e) => SaveConfig();
+            CTList.CollectionChanged += (sender, e) => SaveConfig();
+            EventList.CollectionChanged += (sender, e) => SaveConfig();
+            HotRunnerList.CollectionChanged += (sender, e) => SaveConfig();
+            CommList.CollectionChanged += (sender, e) => SaveConfig();
+            PatternList.CollectionChanged += (sender, e) => SaveConfig();
+            StepList.CollectionChanged += (sender, e) => SaveConfig();
+            
+            // 为每个数据模型的 PropertyChanged 事件添加监听
+            AttachPropertyChangedListeners();
+        }
+
+        private void AttachPropertyChangedListeners()
+        {
+            AttachListenersToCollection<PVSVModel>(PVSVList);
+            AttachListenersToCollection<PIDModel>(PIDList);
+            AttachListenersToCollection<AlarmModel>(AlarmList);
+            AttachListenersToCollection<OutputModel>(OutputList);
+            AttachListenersToCollection<SlopeModel>(SlopeList);
+            AttachListenersToCollection<InputAdjModel>(InputAdjList);
+            AttachListenersToCollection<CTModel>(CTList);
+            AttachListenersToCollection<EventModel>(EventList);
+            AttachListenersToCollection<HotRunnerModel>(HotRunnerList);
+            AttachListenersToCollection<CommParamModel>(CommList);
+            AttachListenersToCollection<ProgramPatternModel>(PatternList);
+            AttachListenersToCollection<ProgramStepModel>(StepList);
+            
+            // 监听新增项
+            PVSVList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            PIDList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            AlarmList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            OutputList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            SlopeList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            InputAdjList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            CTList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            EventList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            HotRunnerList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            CommList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            PatternList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+            StepList.CollectionChanged += (sender, e) => 
+            {
+                if (e.NewItems != null)
+                    foreach (INotifyPropertyChanged item in e.NewItems)
+                        item.PropertyChanged += ModelPropertyChanged;
+            };
+        }
+
+        private void AttachListenersToCollection<T>(ObservableCollection<T> collection) where T : INotifyPropertyChanged
+        {
+            foreach (var item in collection)
+            {
+                item.PropertyChanged += ModelPropertyChanged;
+            }
+        }
+
+        private void ModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            SaveConfig();
+        }
+
+        private void SaveConfig()
+        {
+            if (_isConfigSaving) return;
+            
+            try
+            {
+                _isConfigSaving = true;
+                
+                AppConfig config = new AppConfig
+                {
+                    PVSVList = PVSVList.ToList(),
+                    PIDList = PIDList.ToList(),
+                    AlarmList = AlarmList.ToList(),
+                    OutputList = OutputList.ToList(),
+                    SlopeList = SlopeList.ToList(),
+                    InputAdjList = InputAdjList.ToList(),
+                    CTList = CTList.ToList(),
+                    EventList = EventList.ToList(),
+                    HotRunnerList = HotRunnerList.ToList(),
+                    CommList = CommList.ToList(),
+                    PatternList = PatternList.ToList(),
+                    StepList = StepList.ToList(),
+                    SerialPortSettings = new SerialPortSettings
+                    {
+                        PortName = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1",
+                        BaudRate = int.TryParse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"), out int baud) ? baud : 9600,
+                        Parity = "Even",
+                        DataBits = 8,
+                        StopBits = "1",
+                        Protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU",
+                        SlaveId = int.TryParse(txtStationCode.Text, out int id) ? id : 1
+                    }
+                };
+                
+                ConfigManager.SaveConfig(config);
+                System.Diagnostics.Debug.WriteLine("[Config] 配置保存成功");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Config] 保存配置失败: {ex.Message}");
+            }
+            finally
+            {
+                _isConfigSaving = false;
+            }
         }
 
         public ObservableCollection<AlarmModel> AlarmList { get; } = new();
@@ -938,6 +1692,8 @@ namespace DTE10T_WPF
 
         public ObservableCollection<PVSVModel> PVSVList { get; } = new();
 
+        public Visibility ShowChartVisibility => chkShowChart?.IsChecked ?? false ? Visibility.Visible : Visibility.Collapsed;
+
         public ObservableCollection<SlopeModel> SlopeList { get; } = new();
 
         public ObservableCollection<ProgramStepModel> StepList { get; } = new();
@@ -945,462 +1701,6 @@ namespace DTE10T_WPF
         // ========== 数据集合 ==========
         public ObservableCollection<TempCardModel> TempCards { get; } = new();
 
-        // ========== DataGrid 编辑事件处理 ==========
-
-        ///<summary>
-        /// 获取通道索引 (CH1-CH8 -> 0-7)
-        ///</summary>
-        private int GetChannelIndex(string channelName)
-        {
-            if(string.IsNullOrEmpty(channelName) || !channelName.StartsWith("CH"))
-                return -1;
-            
-            if(int.TryParse(channelName.Substring(2), out int ch))
-                return ch - 1;
-            
-            return -1;
-        }
-
-        ///<summary>
-        /// PV/SV 设定表格编辑事件
-        ///</summary>
-        private async void DgPVSV_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as PVSVModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "SV 设定值 (℃)":
-                        await _modbus.WriteSVAsync(ch, model.SV);
-                        break;
-                    case "量程上限 (℃)":
-                        await _modbus.WriteRangeHighAsync(ch, model.RangeHigh);
-                        break;
-                    case "量程下限 (℃)":
-                        await _modbus.WriteRangeLowAsync(ch, model.RangeLow);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// PID 参数表格编辑事件
-        ///</summary>
-        private async void DgPID_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as PIDModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "控制方式":
-                        int modeIndex = Array.IndexOf(ControlModeNames, model.ControlMode);
-                        if(modeIndex >= 0)
-                            await _modbus.SetControlModeAsync(ch, modeIndex);
-                        break;
-                    case "Pb 比例带":
-                        await _modbus.WritePbAsync(ch, model.Pb);
-                        break;
-                    case "Ti 积分 (s)":
-                        await _modbus.WriteTiAsync(ch, model.Ti);
-                        break;
-                    case "Td 微分 (s)":
-                        await _modbus.WriteTdAsync(ch, model.Td);
-                        break;
-                    case "AT自整定":
-                        if(model.ATEnabled)
-                            await _modbus.StartATAsync(ch);
-                        else
-                            await _modbus.StopATAsync(ch);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// 警报设定表格编辑事件
-        ///</summary>
-        private async void DgAlarm_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as AlarmModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "警报模式":
-                        int modeIndex = Array.IndexOf(AlarmModeNames, model.AlarmMode);
-                        if(modeIndex >= 0)
-                            await _modbus.SetAlarm1ModeAsync(ch, modeIndex);
-                        break;
-                    case "上限值":
-                        await _modbus.WriteAlarmHighAsync(ch, model.AlarmHigh);
-                        break;
-                    case "下限值":
-                        await _modbus.WriteAlarmLowAsync(ch, model.AlarmLow);
-                        break;
-                    case "延迟 (s)":
-                        await _modbus.WriteAlarmDelayAsync(ch, model.AlarmDelay);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// 输出配置表格编辑事件
-        ///</summary>
-        private async void DgOutput_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as OutputModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "OUT1 功能":
-                        int out1Index = Array.IndexOf(OutFunctionNames, model.Out1Function);
-                        if(out1Index >= 0)
-                            await _modbus.SetOut1ControlAsync(ch, out1Index);
-                        break;
-                    case "OUT2 功能":
-                        int out2Index = Array.IndexOf(OutFunctionNames, model.Out2Function);
-                        if(out2Index >= 0)
-                            await _modbus.SetOut2ControlAsync(ch, out2Index);
-                        break;
-                    case "输出上限 (%)":
-                        await _modbus.WriteOutMaxAsync(ch, model.OutMax);
-                        break;
-                    case "输出下限 (%)":
-                        await _modbus.WriteOutMinAsync(ch, model.OutMin);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// 斜率控制表格编辑事件
-        ///</summary>
-        private async void DgSlope_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as SlopeModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "SV 目标 (℃)":
-                        await _modbus.WriteSVAsync(ch, model.SV);
-                        break;
-                    case "斜率 (0.1℃/min)":
-                        await _modbus.WriteSlopeAsync(ch, model.Slope);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// 输入调整表格编辑事件
-        ///</summary>
-        private async void DgInputAdj_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as InputAdjModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "补偿值 (0.1℃)":
-                        await _modbus.WriteOffsetAsync(ch, model.Offset);
-                        break;
-                    case "增益 (‰)":
-                        await _modbus.WriteGainAsync(ch, model.Gain);
-                        break;
-                    case "滤波次数":
-                        if(ch == 0) // 滤波次数是全局参数
-                            await _modbus.WriteFilterCountAsync(model.FilterCount);
-                        break;
-                    case "滤波范围":
-                        if(ch == 0) // 滤波范围是全局参数
-                            await _modbus.WriteFilterRangeAsync(model.FilterRange);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// CT电流表格编辑事件
-        ///</summary>
-        private async void DgCT_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as CTModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 4) return; // CT只有CH1-CH4
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                if(columnName == "CT 调整值")
-                {
-                    await _modbus.WriteCTAdjustAsync(ch, model.CTAdjust);
-                    txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                    txtStatus.Foreground = Brushes.Green;
-                }
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// EVENT事件表格编辑事件
-        ///</summary>
-        private async void DgEvent_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as EventModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                if(columnName == "EVENT 功能")
-                {
-                    int funcIndex = Array.IndexOf(EventFunctionNames, model.EventFunction);
-                    if(funcIndex >= 0)
-                    {
-                        await _modbus.WriteEventFunctionAsync(ch, funcIndex);
-                        txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                        txtStatus.Foreground = Brushes.Green;
-                    }
-                }
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        ///<summary>
-        /// 热流道控制表格编辑事件
-        ///</summary>
-        private async void DgHotRunner_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if(e.EditAction != DataGridEditAction.Commit)
-                return;
-            
-            if(!_isConnected || _modbus == null)
-            {
-                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var model = e.Row.Item as HotRunnerModel;
-            if(model == null) return;
-
-            int ch = GetChannelIndex(model.Channel);
-            if(ch < 0 || ch >= 8) return;
-
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
-
-            try
-            {
-                switch(columnName)
-                {
-                    case "界限温度 (0.1℃)":
-                        await _modbus.WriteHRLimitTempAsync(ch, model.LimitTemp);
-                        break;
-                    case "固定输出量 (0.1%)":
-                        await _modbus.WriteHRFixedOutputAsync(ch, model.FixedOutput);
-                        break;
-                    case "定时 (min)":
-                        await _modbus.WriteHRSoakTimeAsync(ch, model.SoakTime);
-                        break;
-                    case "SV 目标 (℃)":
-                        await _modbus.WriteSVAsync(ch, model.SV);
-                        break;
-                    case "斜率 (0.1℃/min)":
-                        await _modbus.WriteSlopeAsync(ch, model.Slope);
-                        break;
-                }
-                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            catch(Exception ex)
-            {
-                txtStatus.Text = $"写入失败: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+        public PlotModel? TemperaturePlotModel => _temperaturePlotModel;
     }
 }

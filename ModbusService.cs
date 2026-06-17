@@ -16,46 +16,23 @@ namespace DTE10T_WPF
     {
         private readonly SerialPort _serialPort;
 
-        public SerialStreamResource(SerialPort serialPort)
-        {
-            _serialPort = serialPort;
-        }
+        public SerialStreamResource(SerialPort serialPort) { _serialPort = serialPort; }
 
-        public Stream Stream => _serialPort.BaseStream;
+        public void DiscardInBuffer() { _serialPort.DiscardInBuffer(); }
+
+        public void Dispose() { _serialPort.Dispose(); }
+
+        public int Read(byte[] buffer, int offset, int count) { return _serialPort.Read(buffer, offset, count); }
+
+        public void Write(byte[] buffer, int offset, int count) { _serialPort.Write(buffer, offset, count); }
 
         public int InfiniteTimeout => Timeout.Infinite;
 
-        public int ReadTimeout
-        {
-            get => _serialPort.ReadTimeout;
-            set => _serialPort.ReadTimeout = value;
-        }
+        public int ReadTimeout { get => _serialPort.ReadTimeout; set => _serialPort.ReadTimeout = value; }
 
-        public int WriteTimeout
-        {
-            get => _serialPort.WriteTimeout;
-            set => _serialPort.WriteTimeout = value;
-        }
+        public Stream Stream => _serialPort.BaseStream;
 
-        public void DiscardInBuffer()
-        {
-            _serialPort.DiscardInBuffer();
-        }
-
-        public int Read(byte[] buffer, int offset, int count)
-        {
-            return _serialPort.Read(buffer, offset, count);
-        }
-
-        public void Write(byte[] buffer, int offset, int count)
-        {
-            _serialPort.Write(buffer, offset, count);
-        }
-
-        public void Dispose()
-        {
-            _serialPort.Dispose();
-        }
+        public int WriteTimeout { get => _serialPort.WriteTimeout; set => _serialPort.WriteTimeout = value; }
     }
 }
 
@@ -63,22 +40,21 @@ namespace DTE10T_WPF
 {
     ///<summary>
     /// DTE10T Modbus RTU 通讯服务 - 基于 NModbus 真实实现
-    /// NuGet: Install-Package NModbus
-    ///</summary>
+    /// NuGet: Install-Package NModbus</summary>
     public class ModbusService : IDisposable
     {
         // DTE10T 通讯地址映射表（完整版）
         private static readonly ModbusRegister[] _registerMap = new[]
         {
             // ===== 基本参数 (INA + INB 双地址) =====
-            // PV 当前温度值 H1000~H1007 (FLOAT32, 0.1℃)
+            // PV 当前温度值 H1000~H1007 (INT16, 0.1℃)
             new ModbusRegister
             {
                 Name = "PV_CH1",
                 Address = 0x1000,
                 HexAddress = 0x1100,
                 Description = "CH1 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -88,7 +64,7 @@ namespace DTE10T_WPF
                 Address = 0x1001,
                 HexAddress = 0x1200,
                 Description = "CH2 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -98,7 +74,7 @@ namespace DTE10T_WPF
                 Address = 0x1002,
                 HexAddress = 0x1300,
                 Description = "CH3 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -108,7 +84,7 @@ namespace DTE10T_WPF
                 Address = 0x1003,
                 HexAddress = 0x1400,
                 Description = "CH4 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -118,7 +94,7 @@ namespace DTE10T_WPF
                 Address = 0x1004,
                 HexAddress = 0x1500,
                 Description = "CH5 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -128,7 +104,7 @@ namespace DTE10T_WPF
                 Address = 0x1005,
                 HexAddress = 0x1600,
                 Description = "CH6 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -138,7 +114,7 @@ namespace DTE10T_WPF
                 Address = 0x1006,
                 HexAddress = 0x1700,
                 Description = "CH7 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -148,19 +124,19 @@ namespace DTE10T_WPF
                 Address = 0x1007,
                 HexAddress = 0x1800,
                 Description = "CH8 PV当前温度值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
 
-            // SV 温度设定值 H1008~H100F
+            // SV 温度设定值 H1008~H100F (INT16, 0.1℃)
             new ModbusRegister
             {
                 Name = "SV_CH1",
                 Address = 0x1008,
                 HexAddress = 0x1101,
                 Description = "CH1 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -170,7 +146,7 @@ namespace DTE10T_WPF
                 Address = 0x1009,
                 HexAddress = 0x1201,
                 Description = "CH2 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -180,7 +156,7 @@ namespace DTE10T_WPF
                 Address = 0x100A,
                 HexAddress = 0x1301,
                 Description = "CH3 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -190,7 +166,7 @@ namespace DTE10T_WPF
                 Address = 0x100B,
                 HexAddress = 0x1401,
                 Description = "CH4 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -200,7 +176,7 @@ namespace DTE10T_WPF
                 Address = 0x100C,
                 HexAddress = 0x1501,
                 Description = "CH5 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -210,7 +186,7 @@ namespace DTE10T_WPF
                 Address = 0x100D,
                 HexAddress = 0x1601,
                 Description = "CH6 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -220,7 +196,7 @@ namespace DTE10T_WPF
                 Address = 0x100E,
                 HexAddress = 0x1701,
                 Description = "CH7 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -230,7 +206,7 @@ namespace DTE10T_WPF
                 Address = 0x100F,
                 HexAddress = 0x1801,
                 Description = "CH8 SV温度设定值",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 0.1,
                 Unit = "℃"
             },
@@ -2799,12 +2775,14 @@ namespace DTE10T_WPF
         private IModbusSerialMaster? _master;
         private readonly Parity _parity;
 
+        private readonly ModbusProtocol _protocol;
+
         private SerialPort _serialPort;
         private readonly byte _slaveId;
         private readonly StopBits _stopBits;
 
         public ModbusService(int slaveId, string comPort, int baudRate,
-            string parity = "Even", int dataBits = 8, string stopBits = "1")
+            string parity = "Even", int dataBits = 8, string stopBits = "1", string protocol = "RTU")
         {
             _slaveId = (byte)slaveId;
             _comPort = comPort;
@@ -2812,14 +2790,19 @@ namespace DTE10T_WPF
             _parity = ParseParity(parity);
             _dataBits = dataBits;
             _stopBits = ParseStopBits(stopBits);
+            _protocol = protocol?.ToUpper() == "ASCII" ? ModbusProtocol.ASCII : ModbusProtocol.RTU;
         }
 
         ///<summary>
-        /// float → 2 个 ushort (大端 ABCD)
-        ///</summary>
+        /// float → 2 个 ushort (大端 ABCD)</summary>
         private static ushort[] FloatToUshortArray(float value)
         {
             byte[] bytes = BitConverter.GetBytes(value);
+            // Windows上BitConverter.GetBytes返回小端序，需要反转成大端序
+            if(BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
             return new ushort[]
             {
                 (ushort)((bytes[0] << 8) | bytes[1]),
@@ -2828,8 +2811,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 将 ushort 数组解析为 double 数组 (每 2 个 ushort = 1 个 FLOAT32)
-        ///</summary>
+        /// 将 ushort 数组解析为 double 数组 (每 2 个 ushort = 1 个 FLOAT32)</summary>
         private static double[] ParseFloats(ushort[] raw, int count)
         {
             var result = new double[count];
@@ -2840,18 +2822,37 @@ namespace DTE10T_WPF
             return result;
         }
 
+        ///<summary>
+        /// 将 ushort 数组解析为 double 数组 (每 1 个 ushort = 1 个 INT16)</summary>
+        private static double[] ParseInt16s(ushort[] raw, int count, double scaling)
+        {
+            var result = new double[count];
+            for(int i = 0; i < count; i++)
+            {
+                // 将 ushort 转换为有符号的 short
+                short signedValue = (short)raw[i];
+                result[i] = Math.Round(signedValue * scaling, 2);
+            }
+            return result;
+        }
+
         // ========== 工具方法 ==========
 
         ///<summary>
-        /// 将 2 个 ushort (大端 ABCD) 转为 float, 再乘以缩放因子
-        ///</summary>
+        /// 将 2 个 ushort (大端 ABCD) 转为 float, 再乘以缩放因子</summary>
         private static double ParseFloatWithScaling(ushort high, ushort low, double scaling)
         {
             byte[] bytes = new byte[4];
+            // Modbus返回大端序：high=AB, low=CD → ABCD
             bytes[0] = (byte)(high >> 8);
             bytes[1] = (byte)(high & 0xFF);
             bytes[2] = (byte)(low >> 8);
             bytes[3] = (byte)(low & 0xFF);
+            // Windows上BitConverter.ToSingle期望小端序，需要反转
+            if(BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
             float value = BitConverter.ToSingle(bytes, 0);
             return Math.Round(value * scaling, 2);
         }
@@ -2884,8 +2885,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 读取错误码 (H1000~H1007 在错误时返回 H8001~H8003)
-        ///</summary>
+        /// 读取错误码 (H1000~H1007 在错误时返回 H8001~H8003)</summary>
         public async Task<(bool hasError, ushort[] errorCodes)> CheckErrorsAsync()
         {
             var raw = await ReadHoldingRegistersAsync(0x1000, 8);
@@ -2902,8 +2902,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 打开串口并初始化 Modbus RTU Master
-        ///</summary>
+        /// 打开串口并初始化 Modbus RTU Master</summary>
         public async Task<bool> ConnectAsync()
         {
             return await Task.Run(() => {
@@ -2912,11 +2911,19 @@ namespace DTE10T_WPF
                            _serialPort = new SerialPort(_comPort, _baudRate, _parity, _dataBits, _stopBits)
                            {
                                ReadTimeout = 5000,
-                               WriteTimeout = 5000
+                               WriteTimeout = 5000,
                            };
                            _serialPort.Open();
 
-                           _master = new ModbusFactory().CreateRtuMaster(new SerialStreamResource(_serialPort));
+                           var factory = new ModbusFactory();
+                           if(_protocol == ModbusProtocol.ASCII)
+                           {
+                               _master = factory.CreateAsciiMaster(new SerialStreamResource(_serialPort));
+                           }
+                           else
+                           {
+                               _master = factory.CreateRtuMaster(new SerialStreamResource(_serialPort));
+                           }
                            _master.Transport.ReadTimeout = 5000;
                            _master.Transport.WriteTimeout = 5000;
 
@@ -2927,21 +2934,13 @@ namespace DTE10T_WPF
                        {
                            System.Diagnostics.Debug.WriteLine($"[Modbus] 连接失败: {ex.Message}");
                            Dispose();
-                           Application.Current?.Dispatcher?.Invoke(() =>
-                           {
-                               MessageBox.Show($"连接失败\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                                   "Modbus 连接错误", 
-                                   MessageBoxButton.OK, 
-                                   MessageBoxImage.Error);
-                           });
                            return false;
                        }
             });
         }
 
         ///<summary>
-        /// 断开连接并释放资源
-        ///</summary>
+        /// 断开连接并释放资源</summary>
         public void Disconnect()
         {
             try
@@ -2968,19 +2967,16 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 将缩放后的工程值转换为设备原始值写入
-        ///</summary>
+        /// 将缩放后的工程值转换为设备原始值写入</summary>
         public static ushort EncodeScaledInt(double engineeringValue, double scaling)
         { return (ushort)Math.Round(engineeringValue / scaling); }
 
         ///<summary>
-        /// 恢复出厂值 (写入 0x1357 到 H10F2)
-        ///</summary>
+        /// 恢复出厂值 (写入 0x1357 到 H10F2)</summary>
         public async Task<bool> FactoryResetAsync() { return await WriteSingleRegisterAsync(0x10F2, 0x1357); }
 
         ///<summary>
-        /// 读取警报上下限值
-        ///</summary>
+        /// 读取警报上下限值</summary>
         public async Task<(double[] high, double[] low)> ReadAllAlarmLimitsAsync()
         {
             var rawHigh = await ReadHoldingRegistersAsync(0x1080, 16);
@@ -2989,8 +2985,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 读取 LED 状态 (H1124 + channel*0x100)
-        ///</summary>
+        /// 读取 LED 状态 (H1124 + channel*0x100)</summary>
         public async Task<ushort[]> ReadAllLEDStatusAsync()
         {
             var results = new ushort[8];
@@ -3005,26 +3000,23 @@ namespace DTE10T_WPF
         // ========== DTE10T 高级业务方法 ==========
 
         ///<summary>
-        /// 读取全部 8 通道 PV 值 (H1000~H1007, 每通道 2 寄存器 = FLOAT32)
-        ///</summary>
+        /// 读取全部 8 通道 PV 值 (H1000~H1007, 每通道 1 寄存器 = INT16)</summary>
         public async Task<double[]> ReadAllPVAsync()
         {
-            var raw = await ReadHoldingRegistersAsync(0x1000, 16); // 8ch × 2reg
-            return ParseFloats(raw, 8);
+            var raw = await ReadHoldingRegistersAsync(0x1000, 8); // 8ch × 1reg
+            return ParseInt16s(raw, 8, 0.1);
         }
 
         ///<summary>
-        /// 读取全部 8 通道 SV 值 (H1008~H100F)
-        ///</summary>
+        /// 读取全部 8 通道 SV 值 (H1008~H100F, 每通道 1 寄存器 = INT16)</summary>
         public async Task<double[]> ReadAllSVAsync()
         {
-            var raw = await ReadHoldingRegistersAsync(0x1008, 16);
-            return ParseFloats(raw, 8);
+            var raw = await ReadHoldingRegistersAsync(0x1008, 8);
+            return ParseInt16s(raw, 8, 0.1);
         }
 
         ///<summary>
-        /// 读取通讯参数 (H10F8~H10FF)
-        ///</summary>
+        /// 读取通讯参数 (H10F8~H10FF)</summary>
         public async Task<Dictionary<string, ushort>> ReadCommParamsAsync()
         {
             var result = new Dictionary<string, ushort>();
@@ -3041,8 +3033,7 @@ namespace DTE10T_WPF
         // ========== 基础读写方法 ==========
 
         ///<summary>
-        /// 读取单个保持寄存器 (功能码 0x03)
-        ///</summary>
+        /// 读取单个保持寄存器 (功能码 0x03)</summary>
         public async Task<ushort> ReadHoldingRegisterAsync(int address)
         {
             ThrowIfNotConnected();
@@ -3055,21 +3046,13 @@ namespace DTE10T_WPF
                        catch(Exception ex)
                        {
                            System.Diagnostics.Debug.WriteLine($"[Modbus] 读取寄存器失败 @{address:X4}: {ex.Message}");
-                           Application.Current?.Dispatcher?.Invoke(() =>
-                           {
-                               MessageBox.Show($"读取寄存器失败\n\n地址: 0x{address:X4}\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                                   "Modbus 读取错误", 
-                                   MessageBoxButton.OK, 
-                                   MessageBoxImage.Error);
-                           });
-                           throw;
+                           return (ushort)0;
                        }
             });
         }
 
         ///<summary>
-        /// 读取多个连续保持寄存器 (功能码 0x03)
-        ///</summary>
+        /// 读取多个连续保持寄存器 (功能码 0x03)</summary>
         public async Task<ushort[]> ReadHoldingRegistersAsync(int startAddress, int count)
         {
             ThrowIfNotConnected();
@@ -3081,21 +3064,13 @@ namespace DTE10T_WPF
                        catch(Exception ex)
                        {
                            System.Diagnostics.Debug.WriteLine($"[Modbus] 批量读取寄存器失败 @{startAddress:X4}, count={count}: {ex.Message}");
-                           Application.Current?.Dispatcher?.Invoke(() =>
-                           {
-                               MessageBox.Show($"批量读取寄存器失败\n\n起始地址: 0x{startAddress:X4}\n数量: {count}\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                                   "Modbus 读取错误", 
-                                   MessageBoxButton.OK, 
-                                   MessageBoxImage.Error);
-                           });
                            throw;
                        }
             });
         }
 
         ///<summary>
-        /// 设置警报一输出模式 (0~13)
-        ///</summary>
+        /// 设置警报一输出模式 (0~13)</summary>
         public async Task<bool> SetAlarm1ModeAsync(int channel, int mode)
         {
             int addr = 0x10C0 + channel;
@@ -3103,33 +3078,29 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 设置通道禁能/使能 (H10F6, Bit0=CH1 ... Bit7=CH8)
-        ///</summary>
+        /// 设置通道禁能/使能 (H10F6, Bit0=CH1 ... Bit7=CH8)</summary>
         public async Task<bool> SetChannelDisableAsync(ushort bitmask)
         { return await WriteSingleRegisterAsync(0x10F6, bitmask); }
 
         ///<summary>
-        /// 执行控制 (1) / 停止 (0) — H10D8 + channel*0x100
-        ///</summary>
+        /// 执行控制 (1) / 停止 (0) — H10D8~H10DF</summary>
         public async Task<bool> SetControlExecAsync(int channel, int exec)
         {
-            int addr = 0x10D8 + channel * 0x100;
+            int addr = 0x10D8 + channel;
             return await WriteSingleRegisterAsync(addr, (ushort)exec);
         }
 
         ///<summary>
         /// 设置控制方式 (0=PID, 1=ON-OFF, 2=Manual, 3=可程序PID)
-        /// 地址: H10B8 + channel*0x100
-        ///</summary>
+        /// 地址: H10B8~H10BF</summary>
         public async Task<bool> SetControlModeAsync(int channel, int mode)
         {
-            int addr = 0x10B8 + channel * 0x100;
+            int addr = 0x10B8 + channel;
             return await WriteSingleRegisterAsync(addr, (ushort)mode);
         }
 
         ///<summary>
-        /// 设置输出1控制选择 (0=加热, 1=冷却, 2=比例输出)
-        ///</summary>
+        /// 设置输出1控制选择 (0=加热, 1=冷却, 2=比例输出)</summary>
         public async Task<bool> SetOut1ControlAsync(int channel, int value)
         {
             int addr = 0x10A8 + channel;
@@ -3137,8 +3108,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 设置输出2控制选择 (0=加热, 1=冷却, 2=警报)
-        ///</summary>
+        /// 设置输出2控制选择 (0=加热, 1=冷却, 2=警报)</summary>
         public async Task<bool> SetOut2ControlAsync(int channel, int value)
         {
             int addr = 0x10B0 + channel;
@@ -3146,8 +3116,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 启动 AT 自整定 (写入 1 到对应通道的 H10E0~H10E7)
-        ///</summary>
+        /// 启动 AT 自整定 (写入 1 到对应通道的 H10E0~H10E7)</summary>
         public async Task<bool> StartATAsync(int channel)
         {
             int addr = 0x10E0 + channel;
@@ -3155,8 +3124,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 停止 AT 自整定
-        ///</summary>
+        /// 停止 AT 自整定</summary>
         public async Task<bool> StopATAsync(int channel)
         {
             int addr = 0x10E0 + channel;
@@ -3164,13 +3132,17 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 解锁特殊功能 (写入 0x1234 到 H10F1)
-        ///</summary>
+        /// 解锁特殊功能 (写入 0x1234 到 H10F1)</summary>
         public async Task<bool> UnlockSpecialFunctionsAsync() { return await WriteSingleRegisterAsync(0x10F1, 0x1234); }
 
+        public async Task<bool> WriteAlarmDelayAsync(int channel, double value)
+        {
+            int addr = 0x1990 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
         ///<summary>
-        /// 写入警报上限值
-        ///</summary>
+        /// 写入警报上限值</summary>
         public async Task<bool> WriteAlarmHighAsync(int channel, double value)
         {
             int addr = 0x1080 + channel;
@@ -3179,8 +3151,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 写入警报下限值
-        ///</summary>
+        /// 写入警报下限值</summary>
         public async Task<bool> WriteAlarmLowAsync(int channel, double value)
         {
             int addr = 0x1088 + channel;
@@ -3189,8 +3160,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 写入通讯参数
-        ///</summary>
+        /// 写入通讯参数</summary>
         public async Task<bool> WriteCommParamAsync(string paramName, ushort value)
         {
             var paramMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -3207,9 +3177,53 @@ namespace DTE10T_WPF
             return await WriteSingleRegisterAsync(addr, value);
         }
 
+        public async Task<bool> WriteCTAdjustAsync(int channel, double value)
+        {
+            int addr = 0x19A8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteEventFunctionAsync(int channel, int value)
+        {
+            int addr = 0x1998 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteFilterCountAsync(int value)
+        { return await WriteSingleRegisterAsync(0x10F7, (ushort)value); }
+
+        public async Task<bool> WriteFilterRangeAsync(double value)
+        {
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(0x10F9, regs);
+        }
+
+        public async Task<bool> WriteGainAsync(int channel, double value)
+        {
+            int addr = 0x19B8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteHRFixedOutputAsync(int channel, double value)
+        {
+            int addr = 0x19E8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteHRLimitTempAsync(int channel, double value)
+        {
+            int addr = 0x19E0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteHRSoakTimeAsync(int channel, double value)
+        {
+            int addr = 0x19F0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
         ///<summary>
-        /// 写入多个保持寄存器 (功能码 0x10)
-        ///</summary>
+        /// 写入多个保持寄存器 (功能码 0x10)</summary>
         public async Task<bool> WriteMultipleRegistersAsync(int startAddress, ushort[] values)
         {
             ThrowIfNotConnected();
@@ -3222,21 +3236,31 @@ namespace DTE10T_WPF
                        catch(Exception ex)
                        {
                            System.Diagnostics.Debug.WriteLine($"[Modbus] 批量写入失败 @{startAddress:X4}: {ex.Message}");
-                           Application.Current?.Dispatcher?.Invoke(() =>
-                           {
-                               MessageBox.Show($"批量写入寄存器失败\n\n起始地址: 0x{startAddress:X4}\n数量: {values.Length}\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                                   "Modbus 写入错误", 
-                                   MessageBoxButton.OK, 
-                                   MessageBoxImage.Error);
-                           });
                            return false;
                        }
             });
         }
 
+        public async Task<bool> WriteOffsetAsync(int channel, double value)
+        {
+            int addr = 0x1020 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteOutMaxAsync(int channel, double value)
+        {
+            int addr = 0x1980 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteOutMinAsync(int channel, double value)
+        {
+            int addr = 0x1988 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
         ///<summary>
-        /// 写入输出1量 (手动模式) — H1070 + channel
-        ///</summary>
+        /// 写入输出1量 (手动模式) — H1070 + channel</summary>
         public async Task<bool> WriteOutput1Async(int channel, double value)
         {
             int addr = 0x1070 + channel;
@@ -3245,8 +3269,7 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 写入输出2量 (手动模式) — H1078 + channel
-        ///</summary>
+        /// 写入输出2量 (手动模式) — H1078 + channel</summary>
         public async Task<bool> WriteOutput2Async(int channel, double value)
         {
             int addr = 0x1078 + channel;
@@ -3254,10 +3277,16 @@ namespace DTE10T_WPF
             return await WriteMultipleRegistersAsync(addr, regs);
         }
 
+        public async Task<bool> WritePbAsync(int channel, double value)
+        {
+            int addr = 0x1028 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
         ///<summary>
         /// 写入 PID 参数 (Pb, Ti, Td — 各 FLOAT32, 共 6 寄存器)
-        /// 使用按功能顺序编码地址: H1028 + channel*0x100
-        ///</summary>
+        /// 使用按功能顺序编码地址: H1028 + channel*0x100</summary>
         public async Task<bool> WritePIDAsync(int channel, double pb, double ti, double td)
         {
             int baseAddr = 0x1028 + channel * 0x100;
@@ -3266,43 +3295,6 @@ namespace DTE10T_WPF
             data.AddRange(FloatToUshortArray((float)ti));
             data.AddRange(FloatToUshortArray((float)td));
             return await WriteMultipleRegistersAsync(baseAddr, data.ToArray());
-        }
-
-        ///<summary>
-        /// 写入单个保持寄存器 (功能码 0x06)
-        ///</summary>
-        public async Task<bool> WriteSingleRegisterAsync(int address, ushort value)
-        {
-            ThrowIfNotConnected();
-            return await Task.Run(() => {
-                       try
-                       {
-                           _master!.WriteSingleRegister(_slaveId, (ushort)address, value);
-                           return true;
-                       }
-                       catch(Exception ex)
-                       {
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 写入失败 @{address:X4}: {ex.Message}");
-                           Application.Current?.Dispatcher?.Invoke(() =>
-                           {
-                               MessageBox.Show($"写入寄存器失败\n\n地址: 0x{address:X4}\n值: {value}\n\n错误信息: {ex.Message}\n\n异常类型: {ex.GetType().Name}\n\n堆栈跟踪:\n{ex.StackTrace}", 
-                                   "Modbus 写入错误", 
-                                   MessageBoxButton.OK, 
-                                   MessageBoxImage.Error);
-                           });
-                           return false;
-                       }
-            });
-        }
-
-        ///<summary>
-        /// 写入 SV 设定值 (FLOAT32 = 2 寄存器)
-        ///</summary>
-        public async Task<bool> WriteSVAsync(int channel, double value)
-        {
-            int addr = 0x1008 + channel;
-            ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(addr, regs);
         }
 
         public async Task<bool> WriteRangeHighAsync(int channel, double value)
@@ -3319,16 +3311,36 @@ namespace DTE10T_WPF
             return await WriteMultipleRegistersAsync(addr, regs);
         }
 
-        public async Task<bool> WritePbAsync(int channel, double value)
+        ///<summary>
+        /// 写入单个保持寄存器 (功能码 0x06)</summary>
+        public async Task<bool> WriteSingleRegisterAsync(int address, ushort value)
         {
-            int addr = 0x1028 + channel;
-            ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(addr, regs);
+            ThrowIfNotConnected();
+            return await Task.Run(() => {
+                       try
+                       {
+                           _master!.WriteSingleRegister(_slaveId, (ushort)address, value);
+                           return true;
+                       }
+                       catch(Exception ex)
+                       {
+                           System.Diagnostics.Debug.WriteLine($"[Modbus] 写入失败 @{address:X4}: {ex.Message}");
+                           return false;
+                       }
+            });
         }
 
-        public async Task<bool> WriteTiAsync(int channel, double value)
+        public async Task<bool> WriteSlopeAsync(int channel, double value)
         {
-            int addr = 0x1030 + channel;
+            int addr = 0x1970 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        ///<summary>
+        /// 写入 SV 设定值 (FLOAT32 = 2 寄存器)</summary>
+        public async Task<bool> WriteSVAsync(int channel, double value)
+        {
+            int addr = 0x1008 + channel;
             ushort[] regs = FloatToUshortArray((float)value);
             return await WriteMultipleRegistersAsync(addr, regs);
         }
@@ -3340,85 +3352,21 @@ namespace DTE10T_WPF
             return await WriteMultipleRegistersAsync(addr, regs);
         }
 
-        public async Task<bool> WriteAlarmDelayAsync(int channel, double value)
+        public async Task<bool> WriteTiAsync(int channel, double value)
         {
-            int addr = 0x1990 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteOutMaxAsync(int channel, double value)
-        {
-            int addr = 0x1980 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteOutMinAsync(int channel, double value)
-        {
-            int addr = 0x1988 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteSlopeAsync(int channel, double value)
-        {
-            int addr = 0x1970 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteOffsetAsync(int channel, double value)
-        {
-            int addr = 0x1020 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteGainAsync(int channel, double value)
-        {
-            int addr = 0x19B8 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteFilterCountAsync(int value)
-        {
-            return await WriteSingleRegisterAsync(0x10F7, (ushort)value);
-        }
-
-        public async Task<bool> WriteFilterRangeAsync(double value)
-        {
+            int addr = 0x1030 + channel;
             ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(0x10F9, regs);
-        }
-
-        public async Task<bool> WriteCTAdjustAsync(int channel, double value)
-        {
-            int addr = 0x19A8 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteEventFunctionAsync(int channel, int value)
-        {
-            int addr = 0x1998 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteHRLimitTempAsync(int channel, double value)
-        {
-            int addr = 0x19E0 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteHRFixedOutputAsync(int channel, double value)
-        {
-            int addr = 0x19E8 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
-        public async Task<bool> WriteHRSoakTimeAsync(int channel, double value)
-        {
-            int addr = 0x19F0 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
         }
 
         public bool IsConnected => _isConnected;
 
         public IReadOnlyList<ModbusRegister> RegisterMap => _registerMap;
+
+        public enum ModbusProtocol
+        {
+            ASCII,
+            RTU
+        }
     }
 }

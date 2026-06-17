@@ -53,6 +53,11 @@
                         <ComboBoxItem>COM19</ComboBoxItem>
                         <ComboBoxItem>COM20</ComboBoxItem>
                     </ComboBox>
+                    <TextBlock Text="协议:" Foreground="White" VerticalAlignment="Center" Margin="12,0,4,0"/>
+                    <ComboBox x:Name="cmbProtocol" Width="80" SelectedIndex="1" VerticalAlignment="Center">
+                        <ComboBoxItem Tag="ASCII">ASCII</ComboBoxItem>
+                        <ComboBoxItem Tag="RTU">RTU</ComboBoxItem>
+                    </ComboBox>
                     <TextBlock Text="波特率:" Foreground="White" VerticalAlignment="Center" Margin="12,0,4,0"/>
                     <ComboBox x:Name="cmbBaudRate" Width="90" SelectedIndex="2" VerticalAlignment="Center">
                         <ComboBoxItem Tag="2400">2400</ComboBoxItem>
