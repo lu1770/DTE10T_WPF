@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:DTE10T_WPF"
+        xmlns:oxy="clr-namespace:OxyPlot.SkiaSharp.Wpf;assembly=OxyPlot.SkiaSharp.Wpf"
         Title="基恩士20站 - 温控器1 - 台达 DTE10T 监控配置"
         Width="1280" Height="900"
         MinWidth="1000" MinHeight="700"
@@ -98,49 +99,74 @@
                     <!-- 通道选择 -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,8,8,4">
                         <TextBlock Text="显示通道:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
-                        <CheckBox x:Name="chkCH1" Content="CH1" IsChecked="True" Margin="4,0"/>
-                        <CheckBox x:Name="chkCH2" Content="CH2" IsChecked="True" Margin="8,0"/>
-                        <CheckBox x:Name="chkCH3" Content="CH3" IsChecked="True" Margin="8,0"/>
-                        <CheckBox x:Name="chkCH4" Content="CH4" IsChecked="True" Margin="8,0"/>
-                        <CheckBox x:Name="chkCH5" Content="CH5" IsChecked="False" Margin="8,0"/>
-                        <CheckBox x:Name="chkCH6" Content="CH6" IsChecked="False" Margin="8,0"/>
-                        <CheckBox x:Name="chkCH7" Content="CH7" IsChecked="False" Margin="8,0"/>
-                        <CheckBox x:Name="chkCH8" Content="CH8" IsChecked="False" Margin="8,0"/>
+                        <CheckBox x:Name="chkCH1" Content="CH1" IsChecked="True" Margin="4,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH2" Content="CH2" IsChecked="True" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH3" Content="CH3" IsChecked="True" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH4" Content="CH4" IsChecked="True" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH5" Content="CH5" IsChecked="False" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH6" Content="CH6" IsChecked="False" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH7" Content="CH7" IsChecked="False" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
+                        <CheckBox x:Name="chkCH8" Content="CH8" IsChecked="False" Margin="8,0" Checked="ChkChannel_CheckedChanged" Unchecked="ChkChannel_CheckedChanged"/>
                         <Button x:Name="btnSelAll" Content="全选" Width="50" Margin="12,0,0,0" Click="BtnSelAll_Click"/>
                         <Button x:Name="btnSelNone" Content="清空" Width="50" Margin="4,0,0,0" Click="BtnSelNone_Click"/>
+                        <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="显示曲线:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
+                            <CheckBox x:Name="chkShowChart" Content="实时曲线" IsChecked="True" Checked="ChkShowChart_CheckedChanged" Unchecked="ChkShowChart_CheckedChanged"/>
+                        </StackPanel>
                     </StackPanel>
-                    <!-- 温度显示卡片 -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="icTempCards">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="8" Margin="6" Padding="16,12"
-                                            Background="{Binding BgColor}">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-                                            <TextBlock Grid.Row="0" Text="{Binding Channel}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
-                                            <TextBlock Grid.Row="1" Text="{Binding PV, StringFormat='PV: {0:F1} ℃'}" FontSize="22" FontWeight="Bold"
-                                                       Foreground="#1B5E20" HorizontalAlignment="Center" Margin="0,4,0,2"/>
-                                            <TextBlock Grid.Row="2" Text="{Binding SV, StringFormat='SV: {0:F1} ℃'}" FontSize="13"
-                                                       Foreground="#1565C0" HorizontalAlignment="Center"/>
-                                            <TextBlock Grid.Row="3" Text="{Binding Status}" FontSize="11" Foreground="Gray"
-                                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    <!-- 内容区域 -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="3*"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- 左侧温度卡片 -->
+                        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="icTempCards">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="8" Margin="6" Padding="16,12"
+                                                Background="{Binding BgColor}">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Grid.Row="0" Text="{Binding Channel}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
+                                                <TextBlock Grid.Row="1" Text="{Binding PV, StringFormat='PV: {0:F1} ℃'}" FontSize="22" FontWeight="Bold"
+                                                           Foreground="#1B5E20" HorizontalAlignment="Center" Margin="0,4,0,2"/>
+                                                <TextBlock Grid.Row="2" Text="{Binding SV, StringFormat='SV: {0:F1} ℃'}" FontSize="13"
+                                                           Foreground="#1565C0" HorizontalAlignment="Center"/>
+                                                <TextBlock Grid.Row="3" Text="{Binding Status}" FontSize="11" Foreground="Gray"
+                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <!-- 右侧实时曲线图表 -->
+                        <Border Grid.Column="1" BorderBrush="#E0E0E0" BorderThickness="1" Margin="4" Background="White" Visibility="{Binding ShowChartVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,4" HorizontalAlignment="Right">
+                                    <Button x:Name="btnClearChart" Content="清空曲线" Width="80" Click="BtnClearChart_Click" Margin="4"/>
+                                    <Button x:Name="btnPauseChart" Content="暂停" Width="60" Click="BtnPauseChart_Click" Margin="4"/>
+                                </StackPanel>
+                                <oxy:PlotView Grid.Row="1" x:Name="pvTemperature" Model="{Binding TemperaturePlotModel}" Margin="4"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Grid>
             </TabItem>
 

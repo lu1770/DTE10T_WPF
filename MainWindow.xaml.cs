@@ -7,11 +7,34 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Series;
 
 namespace DTE10T_WPF
 {
     public partial class MainWindow : Window
     {
+        // ========== OxyPlot 图表相关 ==========
+        private PlotModel? _temperaturePlotModel;
+        private LineSeries[]? _channelSeries;
+        private const int MaxDataPoints = 100;
+        private bool _isChartPaused = false;
+        private double _chartTimeOffset = 0;
+        private DateTime _chartStartTime;
+
+        // 各通道曲线颜色
+        private static readonly OxyColor[] ChannelColors = new[]
+        {
+            OxyColors.Red,
+            OxyColors.Blue,
+            OxyColors.Green,
+            OxyColors.Orange,
+            OxyColors.Purple,
+            OxyColors.Cyan,
+            OxyColors.Magenta,
+            OxyColors.Gold
+        };
         private static readonly string[] AlarmModeNames = new[]
         {
             "无警报", "上下限警报", "上限警报", "下限警报",
@@ -66,6 +89,8 @@ namespace DTE10T_WPF
             InitAllGrids();
             icTempCards.ItemsSource = TempCards;
             LoadAvailablePorts();
+            InitializeChart();
+            DataContext = this;
         }
 
         ///<summary>
@@ -101,6 +126,154 @@ namespace DTE10T_WPF
                     MessageBoxButton.OK, 
                     MessageBoxImage.Error);
             }
+        }
+
+        // ========== OxyPlot 图表初始化 ==========
+        private void InitializeChart()
+        {
+            _temperaturePlotModel = new PlotModel
+            {
+                Title = "实时温度曲线",
+                Background = OxyColors.White,
+                PlotAreaBorderColor = OxyColors.LightGray
+            };
+
+            var timeAxis = new LinearAxis
+            {
+                Position = AxisPosition.Bottom,
+                Title = "时间 (s)",
+                Minimum = 0,
+                Maximum = 60,
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.Dot,
+                MajorGridlineColor = OxyColors.LightGray,
+                MinorGridlineColor = OxyColors.LightGray
+            };
+            _temperaturePlotModel.Axes.Add(timeAxis);
+
+            var tempAxis = new LinearAxis
+            {
+                Position = AxisPosition.Left,
+                Title = "温度 (℃)",
+                Minimum = -50,
+                Maximum = 500,
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.Dot,
+                MajorGridlineColor = OxyColors.LightGray,
+                MinorGridlineColor = OxyColors.LightGray
+            };
+            _temperaturePlotModel.Axes.Add(tempAxis);
+
+            _channelSeries = new LineSeries[8];
+            for (int i = 0; i < 8; i++)
+            {
+                _channelSeries[i] = new LineSeries
+                {
+                    Title = $"CH{i + 1}",
+                    Color = ChannelColors[i],
+                    StrokeThickness = 2,
+                    MarkerType = MarkerType.None,
+                    IsVisible = i < 4
+                };
+                _temperaturePlotModel.Series.Add(_channelSeries[i]);
+            }
+
+            _chartStartTime = DateTime.Now;
+        }
+
+        private void UpdateChart()
+        {
+            if (_isChartPaused || _channelSeries == null || _temperaturePlotModel == null)
+                return;
+
+            double currentTime = (DateTime.Now - _chartStartTime).TotalSeconds + _chartTimeOffset;
+
+            for (int i = 0; i < 8; i++)
+            {
+                CheckBox? chkBox = FindName($"chkCH{i + 1}") as CheckBox;
+                bool isVisible = chkBox?.IsChecked ?? false;
+                _channelSeries[i].IsVisible = isVisible;
+
+                if (!isVisible) continue;
+
+                double pvValue = TempCards[i].PV;
+                _channelSeries[i].Points.Add(new DataPoint(currentTime, pvValue));
+
+                if (_channelSeries[i].Points.Count > MaxDataPoints)
+                {
+                    _channelSeries[i].Points.RemoveAt(0);
+                }
+            }
+
+            if (_temperaturePlotModel.Axes.Count > 0)
+            {
+                var timeAxis = _temperaturePlotModel.Axes[0] as LinearAxis;
+                if (timeAxis != null)
+                {
+                    timeAxis.Minimum = currentTime - 60;
+                    timeAxis.Maximum = currentTime + 5;
+                    if (timeAxis.Minimum < 0) timeAxis.Minimum = 0;
+                }
+            }
+
+            _temperaturePlotModel.InvalidatePlot(true);
+        }
+
+        private void ClearChart()
+        {
+            if (_channelSeries != null)
+            {
+                foreach (var series in _channelSeries)
+                {
+                    series.Points.Clear();
+                }
+            }
+            _chartStartTime = DateTime.Now;
+            _chartTimeOffset = 0;
+
+            if (_temperaturePlotModel != null)
+            {
+                _temperaturePlotModel.InvalidatePlot(true);
+            }
+        }
+
+        private void ToggleChartPause()
+        {
+            _isChartPaused = !_isChartPaused;
+            btnPauseChart.Content = _isChartPaused ? "继续" : "暂停";
+
+            if (!_isChartPaused)
+            {
+                _chartStartTime = DateTime.Now;
+                _chartTimeOffset = 0;
+            }
+        }
+
+        public PlotModel? TemperaturePlotModel => _temperaturePlotModel;
+
+        public Visibility ShowChartVisibility => chkShowChart?.IsChecked ?? false ? Visibility.Visible : Visibility.Collapsed;
+
+        private void ChkChannel_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            UpdateChart();
+        }
+
+        private void ChkShowChart_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (chkShowChart?.IsChecked ?? false)
+            {
+                UpdateChart();
+            }
+        }
+
+        private void BtnClearChart_Click(object sender, RoutedEventArgs e)
+        {
+            ClearChart();
+        }
+
+        private void BtnPauseChart_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleChartPause();
         }
 
         // ========== 连接 / 断开 ==========
@@ -641,6 +814,9 @@ namespace DTE10T_WPF
                 _readCount++;
                 txtReadCount.Text = $"读取次数: {_readCount}";
                 txtLastUpdate.Text = $"最后更新: {DateTime.Now:HH:mm:ss}";
+
+                // 更新实时曲线图表
+                UpdateChart();
             }
             catch(Exception ex)
             {

@@ -13,4 +13,7 @@
     <SourceRoot Include="C:\Users\zheng\.nuget\packages\" />
     <SourceRoot Include="D:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages\" />
   </ItemGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgOxyPlot_SkiaSharp_Wpf Condition=" '$(PkgOxyPlot_SkiaSharp_Wpf)' == '' ">C:\Users\zheng\.nuget\packages\oxyplot.skiasharp.wpf\2.2.0</PkgOxyPlot_SkiaSharp_Wpf>
+  </PropertyGroup>
 </Project>
