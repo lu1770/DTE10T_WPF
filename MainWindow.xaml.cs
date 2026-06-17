@@ -758,5 +758,463 @@ namespace DTE10T_WPF
 
         // ========== 数据集合 ==========
         public ObservableCollection<TempCardModel> TempCards { get; } = new();
+
+        // ========== DataGrid 编辑事件处理 ==========
+
+        ///<summary>
+        /// 获取通道索引 (CH1-CH8 -> 0-7)
+        ///</summary>
+        private int GetChannelIndex(string channelName)
+        {
+            if(string.IsNullOrEmpty(channelName) || !channelName.StartsWith("CH"))
+                return -1;
+            
+            if(int.TryParse(channelName.Substring(2), out int ch))
+                return ch - 1;
+            
+            return -1;
+        }
+
+        ///<summary>
+        /// PV/SV 设定表格编辑事件
+        ///</summary>
+        private async void DgPVSV_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as PVSVModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "SV 设定值 (℃)":
+                        await _modbus.WriteSVAsync(ch, model.SV);
+                        break;
+                    case "量程上限 (℃)":
+                        await _modbus.WriteRangeHighAsync(ch, model.RangeHigh);
+                        break;
+                    case "量程下限 (℃)":
+                        await _modbus.WriteRangeLowAsync(ch, model.RangeLow);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// PID 参数表格编辑事件
+        ///</summary>
+        private async void DgPID_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as PIDModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "控制方式":
+                        int modeIndex = Array.IndexOf(ControlModeNames, model.ControlMode);
+                        if(modeIndex >= 0)
+                            await _modbus.SetControlModeAsync(ch, modeIndex);
+                        break;
+                    case "Pb 比例带":
+                        await _modbus.WritePbAsync(ch, model.Pb);
+                        break;
+                    case "Ti 积分 (s)":
+                        await _modbus.WriteTiAsync(ch, model.Ti);
+                        break;
+                    case "Td 微分 (s)":
+                        await _modbus.WriteTdAsync(ch, model.Td);
+                        break;
+                    case "AT自整定":
+                        if(model.ATEnabled)
+                            await _modbus.StartATAsync(ch);
+                        else
+                            await _modbus.StopATAsync(ch);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// 警报设定表格编辑事件
+        ///</summary>
+        private async void DgAlarm_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as AlarmModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "警报模式":
+                        int modeIndex = Array.IndexOf(AlarmModeNames, model.AlarmMode);
+                        if(modeIndex >= 0)
+                            await _modbus.SetAlarm1ModeAsync(ch, modeIndex);
+                        break;
+                    case "上限值":
+                        await _modbus.WriteAlarmHighAsync(ch, model.AlarmHigh);
+                        break;
+                    case "下限值":
+                        await _modbus.WriteAlarmLowAsync(ch, model.AlarmLow);
+                        break;
+                    case "延迟 (s)":
+                        await _modbus.WriteAlarmDelayAsync(ch, model.AlarmDelay);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// 输出配置表格编辑事件
+        ///</summary>
+        private async void DgOutput_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as OutputModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "OUT1 功能":
+                        int out1Index = Array.IndexOf(OutFunctionNames, model.Out1Function);
+                        if(out1Index >= 0)
+                            await _modbus.SetOut1ControlAsync(ch, out1Index);
+                        break;
+                    case "OUT2 功能":
+                        int out2Index = Array.IndexOf(OutFunctionNames, model.Out2Function);
+                        if(out2Index >= 0)
+                            await _modbus.SetOut2ControlAsync(ch, out2Index);
+                        break;
+                    case "输出上限 (%)":
+                        await _modbus.WriteOutMaxAsync(ch, model.OutMax);
+                        break;
+                    case "输出下限 (%)":
+                        await _modbus.WriteOutMinAsync(ch, model.OutMin);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// 斜率控制表格编辑事件
+        ///</summary>
+        private async void DgSlope_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as SlopeModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "SV 目标 (℃)":
+                        await _modbus.WriteSVAsync(ch, model.SV);
+                        break;
+                    case "斜率 (0.1℃/min)":
+                        await _modbus.WriteSlopeAsync(ch, model.Slope);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// 输入调整表格编辑事件
+        ///</summary>
+        private async void DgInputAdj_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as InputAdjModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "补偿值 (0.1℃)":
+                        await _modbus.WriteOffsetAsync(ch, model.Offset);
+                        break;
+                    case "增益 (‰)":
+                        await _modbus.WriteGainAsync(ch, model.Gain);
+                        break;
+                    case "滤波次数":
+                        if(ch == 0) // 滤波次数是全局参数
+                            await _modbus.WriteFilterCountAsync(model.FilterCount);
+                        break;
+                    case "滤波范围":
+                        if(ch == 0) // 滤波范围是全局参数
+                            await _modbus.WriteFilterRangeAsync(model.FilterRange);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// CT电流表格编辑事件
+        ///</summary>
+        private async void DgCT_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as CTModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 4) return; // CT只有CH1-CH4
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                if(columnName == "CT 调整值")
+                {
+                    await _modbus.WriteCTAdjustAsync(ch, model.CTAdjust);
+                    txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                    txtStatus.Foreground = Brushes.Green;
+                }
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// EVENT事件表格编辑事件
+        ///</summary>
+        private async void DgEvent_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as EventModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                if(columnName == "EVENT 功能")
+                {
+                    int funcIndex = Array.IndexOf(EventFunctionNames, model.EventFunction);
+                    if(funcIndex >= 0)
+                    {
+                        await _modbus.WriteEventFunctionAsync(ch, funcIndex);
+                        txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                        txtStatus.Foreground = Brushes.Green;
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        ///<summary>
+        /// 热流道控制表格编辑事件
+        ///</summary>
+        private async void DgHotRunner_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+                return;
+            
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接设备", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var model = e.Row.Item as HotRunnerModel;
+            if(model == null) return;
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8) return;
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? "";
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "界限温度 (0.1℃)":
+                        await _modbus.WriteHRLimitTempAsync(ch, model.LimitTemp);
+                        break;
+                    case "固定输出量 (0.1%)":
+                        await _modbus.WriteHRFixedOutputAsync(ch, model.FixedOutput);
+                        break;
+                    case "定时 (min)":
+                        await _modbus.WriteHRSoakTimeAsync(ch, model.SoakTime);
+                        break;
+                    case "SV 目标 (℃)":
+                        await _modbus.WriteSVAsync(ch, model.SV);
+                        break;
+                    case "斜率 (0.1℃/min)":
+                        await _modbus.WriteSlopeAsync(ch, model.Slope);
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                MessageBox.Show($"写入失败\n\n错误信息: {ex.Message}", "写入错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

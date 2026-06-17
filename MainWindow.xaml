@@ -149,7 +149,8 @@
                 <DataGrid x:Name="dgPVSV" AutoGenerateColumns="False" CanUserAddRows="False"
                           AlternatingRowBackground="{StaticResource RowEvenBrush}"
                           RowBackground="{StaticResource RowOddBrush}"
-                          GridLinesVisibility="All" HeadersVisibility="Column">
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          CellEditEnding="DgPVSV_CellEditEnding">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                         <DataGridTextColumn Header="PV 当前值 (℃)" Binding="{Binding PV, StringFormat=F1}" Width="120" IsReadOnly="True"/>
@@ -167,7 +168,8 @@
                 <DataGrid x:Name="dgPID" AutoGenerateColumns="False" CanUserAddRows="False"
                           AlternatingRowBackground="{StaticResource RowEvenBrush}"
                           RowBackground="{StaticResource RowOddBrush}"
-                          GridLinesVisibility="All" HeadersVisibility="Column">
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          CellEditEnding="DgPID_CellEditEnding">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                         <DataGridTextColumn Header="控制方式" Binding="{Binding ControlMode}" Width="100" IsReadOnly="False"/>
@@ -199,7 +201,8 @@
                     <DataGrid Grid.Row="1" x:Name="dgAlarm" AutoGenerateColumns="False" CanUserAddRows="False"
                               AlternatingRowBackground="{StaticResource RowEvenBrush}"
                               RowBackground="{StaticResource RowOddBrush}"
-                              GridLinesVisibility="All" HeadersVisibility="Column">
+                              GridLinesVisibility="All" HeadersVisibility="Column"
+                              CellEditEnding="DgAlarm_CellEditEnding">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                             <DataGridTextColumn Header="警报模式" Binding="{Binding AlarmMode}" Width="140" IsReadOnly="False"/>
@@ -217,7 +220,8 @@
                 <DataGrid x:Name="dgOutput" AutoGenerateColumns="False" CanUserAddRows="False"
                           AlternatingRowBackground="{StaticResource RowEvenBrush}"
                           RowBackground="{StaticResource RowOddBrush}"
-                          GridLinesVisibility="All" HeadersVisibility="Column">
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          CellEditEnding="DgOutput_CellEditEnding">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                         <DataGridTextColumn Header="OUT1 功能" Binding="{Binding Out1Function}" Width="130" IsReadOnly="False"/>
@@ -240,7 +244,8 @@
                                 <TextBlock Text="温度设定值按设定斜率上升，单位 0.1℃/min" Foreground="Gray" Margin="0,0,0,8"/>
                                 <DataGrid x:Name="dgSlope" AutoGenerateColumns="False" CanUserAddRows="False" Height="200"
                                           AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                                          RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All">
+                                          RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All"
+                                          CellEditEnding="DgSlope_CellEditEnding">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                                         <DataGridTextColumn Header="SV 目标 (℃)" Binding="{Binding SV, StringFormat=F1}" Width="100"/>
@@ -254,7 +259,8 @@
                         <GroupBox Header="输入误差调整" Margin="4">
                             <DataGrid x:Name="dgInputAdj" AutoGenerateColumns="False" CanUserAddRows="False" Height="200"
                                       AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All">
+                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All"
+                                      CellEditEnding="DgInputAdj_CellEditEnding">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                                     <DataGridTextColumn Header="补偿值 (0.1℃)" Binding="{Binding Offset, StringFormat=F0}" Width="120"/>
@@ -268,7 +274,8 @@
                         <GroupBox Header="CT 电流检知" Margin="4">
                             <DataGrid x:Name="dgCT" AutoGenerateColumns="False" CanUserAddRows="False" Height="160"
                                       AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All">
+                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All"
+                                      CellEditEnding="DgCT_CellEditEnding">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                                     <DataGridTextColumn Header="CT 保持值" Binding="{Binding CTStatic, StringFormat=F0}" Width="100" IsReadOnly="True"/>
@@ -281,7 +288,8 @@
                         <GroupBox Header="EVENT 事件输入" Margin="4">
                             <DataGrid x:Name="dgEvent" AutoGenerateColumns="False" CanUserAddRows="False" Height="160"
                                       AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All">
+                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All"
+                                      CellEditEnding="DgEvent_CellEditEnding">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                                     <DataGridTextColumn Header="EVENT 功能" Binding="{Binding EventFunction}" Width="160"/>
@@ -292,7 +300,8 @@
                         <GroupBox Header="热流道控制 (Hot Runner)" Margin="4">
                             <DataGrid x:Name="dgHotRunner" AutoGenerateColumns="False" CanUserAddRows="False" Height="200"
                                       AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All">
+                                      RowBackground="{StaticResource RowOddBrush}" GridLinesVisibility="All"
+                                      CellEditEnding="DgHotRunner_CellEditEnding">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60" IsReadOnly="True"/>
                                     <DataGridTextColumn Header="界限温度 (0.1℃)" Binding="{Binding LimitTemp, StringFormat=F0}" Width="130"/>

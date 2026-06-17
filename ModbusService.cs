@@ -3305,6 +3305,118 @@ namespace DTE10T_WPF
             return await WriteMultipleRegistersAsync(addr, regs);
         }
 
+        public async Task<bool> WriteRangeHighAsync(int channel, double value)
+        {
+            int addr = 0x1010 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WriteRangeLowAsync(int channel, double value)
+        {
+            int addr = 0x1018 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WritePbAsync(int channel, double value)
+        {
+            int addr = 0x1028 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WriteTiAsync(int channel, double value)
+        {
+            int addr = 0x1030 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WriteTdAsync(int channel, double value)
+        {
+            int addr = 0x1038 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WriteAlarmDelayAsync(int channel, double value)
+        {
+            int addr = 0x1990 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteOutMaxAsync(int channel, double value)
+        {
+            int addr = 0x1980 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteOutMinAsync(int channel, double value)
+        {
+            int addr = 0x1988 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteSlopeAsync(int channel, double value)
+        {
+            int addr = 0x1970 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteOffsetAsync(int channel, double value)
+        {
+            int addr = 0x1020 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteGainAsync(int channel, double value)
+        {
+            int addr = 0x19B8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteFilterCountAsync(int value)
+        {
+            return await WriteSingleRegisterAsync(0x10F7, (ushort)value);
+        }
+
+        public async Task<bool> WriteFilterRangeAsync(double value)
+        {
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(0x10F9, regs);
+        }
+
+        public async Task<bool> WriteCTAdjustAsync(int channel, double value)
+        {
+            int addr = 0x19A8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteEventFunctionAsync(int channel, int value)
+        {
+            int addr = 0x1998 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteHRLimitTempAsync(int channel, double value)
+        {
+            int addr = 0x19E0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteHRFixedOutputAsync(int channel, double value)
+        {
+            int addr = 0x19E8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteHRSoakTimeAsync(int channel, double value)
+        {
+            int addr = 0x19F0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
         public bool IsConnected => _isConnected;
 
         public IReadOnlyList<ModbusRegister> RegisterMap => _registerMap;
