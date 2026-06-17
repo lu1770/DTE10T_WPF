@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    
+    <AssemblyName>基恩士20站.温控器1</AssemblyName>
+    <RootNamespace>DTE10T_WPF</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NModbus" Version="3.0.83" />
+    <PackageReference Include="NModbus.Serial" Version="3.0.83" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.9" />
+  </ItemGroup>
+</Project>
