@@ -135,7 +135,9 @@ namespace DTE10T_WPF
             {
                 Title = "实时温度曲线",
                 Background = OxyColors.White,
-                PlotAreaBorderColor = OxyColors.LightGray
+                PlotAreaBorderColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 14
             };
 
             var timeAxis = new LinearAxis
@@ -147,7 +149,11 @@ namespace DTE10T_WPF
                 MajorGridlineStyle = LineStyle.Solid,
                 MinorGridlineStyle = LineStyle.Dot,
                 MajorGridlineColor = OxyColors.LightGray,
-                MinorGridlineColor = OxyColors.LightGray
+                MinorGridlineColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 12,
+                Font = "微软雅黑",
+                FontSize = 11
             };
             _temperaturePlotModel.Axes.Add(timeAxis);
 
@@ -160,7 +166,11 @@ namespace DTE10T_WPF
                 MajorGridlineStyle = LineStyle.Solid,
                 MinorGridlineStyle = LineStyle.Dot,
                 MajorGridlineColor = OxyColors.LightGray,
-                MinorGridlineColor = OxyColors.LightGray
+                MinorGridlineColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 12,
+                Font = "微软雅黑",
+                FontSize = 11
             };
             _temperaturePlotModel.Axes.Add(tempAxis);
 
