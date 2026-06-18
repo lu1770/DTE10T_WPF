@@ -4,13 +4,13 @@ using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.ComponentModel;
 
 namespace DTE10T_WPF
 {
@@ -76,6 +76,8 @@ namespace DTE10T_WPF
         private DateTime _chartStartTime;
         private double _chartTimeOffset = 0;
         private bool _isChartPaused = false;
+        // ========== 配置管理 ==========
+        private bool _isConfigSaving = false;
         private bool _isConnected = false;
 
         // ========== Modbus 服务 ==========
@@ -84,8 +86,6 @@ namespace DTE10T_WPF
         private int _readCount = 0;
         // ========== OxyPlot 图表相关 ==========
         private PlotModel? _temperaturePlotModel;
-        // ========== 配置管理 ==========
-        private bool _isConfigSaving = false;
 
         public MainWindow()
         {
@@ -95,9 +95,143 @@ namespace DTE10T_WPF
             LoadAvailablePorts();
             InitializeChart();
             DataContext = this;
-            
+
             LoadConfigIfExists();
             SetupConfigChangeListeners();
+        }
+
+        private void AttachListenersToCollection<T>(ObservableCollection<T> collection) where T : INotifyPropertyChanged
+        {
+            foreach(var item in collection)
+            {
+                item.PropertyChanged += ModelPropertyChanged;
+            }
+        }
+
+        private void AttachPropertyChangedListeners()
+        {
+            AttachListenersToCollection<PVSVModel>(PVSVList);
+            AttachListenersToCollection<PIDModel>(PIDList);
+            AttachListenersToCollection<AlarmModel>(AlarmList);
+            AttachListenersToCollection<OutputModel>(OutputList);
+            AttachListenersToCollection<SlopeModel>(SlopeList);
+            AttachListenersToCollection<InputAdjModel>(InputAdjList);
+            AttachListenersToCollection<CTModel>(CTList);
+            AttachListenersToCollection<EventModel>(EventList);
+            AttachListenersToCollection<HotRunnerModel>(HotRunnerList);
+            AttachListenersToCollection<CommParamModel>(CommList);
+            AttachListenersToCollection<ProgramPatternModel>(PatternList);
+            AttachListenersToCollection<ProgramStepModel>(StepList);
+
+            // 监听新增项
+            PVSVList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            PIDList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            AlarmList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            OutputList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            SlopeList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            InputAdjList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            CTList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            EventList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            HotRunnerList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            CommList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            PatternList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
+            StepList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
         }
 
         private void BtnClearChart_Click(object sender, RoutedEventArgs e) { ClearChart(); }
@@ -1008,6 +1142,83 @@ namespace DTE10T_WPF
             }
         }
 
+        // ========== 配置管理方法 ==========
+        private void LoadConfigIfExists()
+        {
+            bool configLoaded = false;
+
+            if(ConfigManager.ConfigExists())
+            {
+                try
+                {
+                    AppConfig config = ConfigManager.LoadConfig();
+
+                    // 加载串口设置
+                    if(config.SerialPortSettings != null)
+                    {
+                        txtStationCode.Text = config.SerialPortSettings.SlaveId.ToString();
+
+                        foreach(ComboBoxItem item in cmbBaudRate.Items)
+                        {
+                            if(item.Content.ToString() == config.SerialPortSettings.BaudRate.ToString())
+                            {
+                                cmbBaudRate.SelectedItem = item;
+                                break;
+                            }
+                        }
+
+                        foreach(ComboBoxItem item in cmbComPort.Items)
+                        {
+                            if(item.Content.ToString() == config.SerialPortSettings.PortName)
+                            {
+                                cmbComPort.SelectedItem = item;
+                                break;
+                            }
+                        }
+
+                        foreach(ComboBoxItem item in cmbProtocol.Items)
+                        {
+                            if(item.Tag?.ToString() == config.SerialPortSettings.Protocol)
+                            {
+                                cmbProtocol.SelectedItem = item;
+                                break;
+                            }
+                        }
+
+                        configLoaded = true;
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("[Config] 配置加载成功");
+                }
+                catch(Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Config] 加载配置失败: {ex.Message}");
+                }
+            }
+
+            // 如果没有配置文件，或者保存的串口不在可用列表中，则默认选择第一个串口
+            if(!configLoaded || cmbComPort.SelectedItem == null)
+            {
+                if(cmbComPort.Items.Count > 0)
+                {
+                    cmbComPort.SelectedIndex = 0;
+                }
+            }
+
+            // 默认选择第一个波特率和协议
+            if(cmbBaudRate.SelectedItem == null && cmbBaudRate.Items.Count > 0)
+            {
+                cmbBaudRate.SelectedIndex = 2; // 默认9600
+            }
+
+            if(cmbProtocol.SelectedItem == null && cmbProtocol.Items.Count > 0)
+            {
+                cmbProtocol.SelectedIndex = 0;
+            }
+        }
+
+        private void ModelPropertyChanged(object? sender, PropertyChangedEventArgs e) { SaveConfig(); }
+
         // ========== 工具方法 ==========
         private static float ParseFloat(ushort high, ushort low, double scaling)
         {
@@ -1334,10 +1545,86 @@ namespace DTE10T_WPF
             }
         }
 
+        private void SaveConfig()
+        {
+            if(_isConfigSaving)
+            {
+                return;
+            }
+
+            try
+            {
+                _isConfigSaving = true;
+
+                AppConfig config = new AppConfig
+                {
+                    PVSVList = PVSVList.ToList(),
+                    PIDList = PIDList.ToList(),
+                    AlarmList = AlarmList.ToList(),
+                    OutputList = OutputList.ToList(),
+                    SlopeList = SlopeList.ToList(),
+                    InputAdjList = InputAdjList.ToList(),
+                    CTList = CTList.ToList(),
+                    EventList = EventList.ToList(),
+                    HotRunnerList = HotRunnerList.ToList(),
+                    CommList = CommList.ToList(),
+                    PatternList = PatternList.ToList(),
+                    StepList = StepList.ToList(),
+                    SerialPortSettings = new SerialPortSettings
+                    {
+                        PortName = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1",
+                        BaudRate = int.TryParse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"), out int baud) ? baud : 9600,
+                        Parity = "Even",
+                        DataBits = 8,
+                        StopBits = "1",
+                        Protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU",
+                        SlaveId = int.TryParse(txtStationCode.Text, out int id) ? id : 1
+                    }
+                };
+
+                ConfigManager.SaveConfig(config);
+                System.Diagnostics.Debug.WriteLine("[Config] 配置保存成功");
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Config] 保存配置失败: {ex.Message}");
+            }
+            finally
+            {
+                _isConfigSaving = false;
+            }
+        }
+
         ///<summary>
         /// 将传感器数值转换为工程值（考虑缩放因子）</summary>
         private static double ScaleToEngineering(ushort rawValue, double scaling)
         { return Math.Round(rawValue * scaling, 2); }
+
+        private void SetupConfigChangeListeners()
+        {
+            // 监听串口设置变化
+            txtStationCode.LostFocus += (sender, e) => SaveConfig();
+            cmbBaudRate.SelectionChanged += (sender, e) => SaveConfig();
+            cmbComPort.SelectionChanged += (sender, e) => SaveConfig();
+            cmbProtocol.SelectionChanged += (sender, e) => SaveConfig();
+
+            // 监听数据集合变化
+            PVSVList.CollectionChanged += (sender, e) => SaveConfig();
+            PIDList.CollectionChanged += (sender, e) => SaveConfig();
+            AlarmList.CollectionChanged += (sender, e) => SaveConfig();
+            OutputList.CollectionChanged += (sender, e) => SaveConfig();
+            SlopeList.CollectionChanged += (sender, e) => SaveConfig();
+            InputAdjList.CollectionChanged += (sender, e) => SaveConfig();
+            CTList.CollectionChanged += (sender, e) => SaveConfig();
+            EventList.CollectionChanged += (sender, e) => SaveConfig();
+            HotRunnerList.CollectionChanged += (sender, e) => SaveConfig();
+            CommList.CollectionChanged += (sender, e) => SaveConfig();
+            PatternList.CollectionChanged += (sender, e) => SaveConfig();
+            StepList.CollectionChanged += (sender, e) => SaveConfig();
+
+            // 为每个数据模型的 PropertyChanged 事件添加监听
+            AttachPropertyChangedListeners();
+        }
 
         private void ToggleChartPause()
         {
@@ -1442,257 +1729,6 @@ namespace DTE10T_WPF
                 _modbus = null;
             }
             base.OnClosing(e);
-        }
-
-        // ========== 配置管理方法 ==========
-        private void LoadConfigIfExists()
-        {
-            bool configLoaded = false;
-            
-            if (ConfigManager.ConfigExists())
-            {
-                try
-                {
-                    AppConfig config = ConfigManager.LoadConfig();
-                    
-                    // 加载串口设置
-                    if (config.SerialPortSettings != null)
-                    {
-                        txtStationCode.Text = config.SerialPortSettings.SlaveId.ToString();
-                        
-                        foreach (ComboBoxItem item in cmbBaudRate.Items)
-                        {
-                            if (item.Content.ToString() == config.SerialPortSettings.BaudRate.ToString())
-                            {
-                                cmbBaudRate.SelectedItem = item;
-                                break;
-                            }
-                        }
-                        
-                        foreach (ComboBoxItem item in cmbComPort.Items)
-                        {
-                            if (item.Content.ToString() == config.SerialPortSettings.PortName)
-                            {
-                                cmbComPort.SelectedItem = item;
-                                break;
-                            }
-                        }
-                        
-                        foreach (ComboBoxItem item in cmbProtocol.Items)
-                        {
-                            if (item.Tag?.ToString() == config.SerialPortSettings.Protocol)
-                            {
-                                cmbProtocol.SelectedItem = item;
-                                break;
-                            }
-                        }
-                        
-                        configLoaded = true;
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine("[Config] 配置加载成功");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Config] 加载配置失败: {ex.Message}");
-                }
-            }
-            
-            // 如果没有配置文件，或者保存的串口不在可用列表中，则默认选择第一个串口
-            if (!configLoaded || cmbComPort.SelectedItem == null)
-            {
-                if (cmbComPort.Items.Count > 0)
-                {
-                    cmbComPort.SelectedIndex = 0;
-                }
-            }
-            
-            // 默认选择第一个波特率和协议
-            if (cmbBaudRate.SelectedItem == null && cmbBaudRate.Items.Count > 0)
-            {
-                cmbBaudRate.SelectedIndex = 2; // 默认9600
-            }
-            
-            if (cmbProtocol.SelectedItem == null && cmbProtocol.Items.Count > 0)
-            {
-                cmbProtocol.SelectedIndex = 0;
-            }
-        }
-
-        private void SetupConfigChangeListeners()
-        {
-            // 监听串口设置变化
-            txtStationCode.LostFocus += (sender, e) => SaveConfig();
-            cmbBaudRate.SelectionChanged += (sender, e) => SaveConfig();
-            cmbComPort.SelectionChanged += (sender, e) => SaveConfig();
-            cmbProtocol.SelectionChanged += (sender, e) => SaveConfig();
-            
-            // 监听数据集合变化
-            PVSVList.CollectionChanged += (sender, e) => SaveConfig();
-            PIDList.CollectionChanged += (sender, e) => SaveConfig();
-            AlarmList.CollectionChanged += (sender, e) => SaveConfig();
-            OutputList.CollectionChanged += (sender, e) => SaveConfig();
-            SlopeList.CollectionChanged += (sender, e) => SaveConfig();
-            InputAdjList.CollectionChanged += (sender, e) => SaveConfig();
-            CTList.CollectionChanged += (sender, e) => SaveConfig();
-            EventList.CollectionChanged += (sender, e) => SaveConfig();
-            HotRunnerList.CollectionChanged += (sender, e) => SaveConfig();
-            CommList.CollectionChanged += (sender, e) => SaveConfig();
-            PatternList.CollectionChanged += (sender, e) => SaveConfig();
-            StepList.CollectionChanged += (sender, e) => SaveConfig();
-            
-            // 为每个数据模型的 PropertyChanged 事件添加监听
-            AttachPropertyChangedListeners();
-        }
-
-        private void AttachPropertyChangedListeners()
-        {
-            AttachListenersToCollection<PVSVModel>(PVSVList);
-            AttachListenersToCollection<PIDModel>(PIDList);
-            AttachListenersToCollection<AlarmModel>(AlarmList);
-            AttachListenersToCollection<OutputModel>(OutputList);
-            AttachListenersToCollection<SlopeModel>(SlopeList);
-            AttachListenersToCollection<InputAdjModel>(InputAdjList);
-            AttachListenersToCollection<CTModel>(CTList);
-            AttachListenersToCollection<EventModel>(EventList);
-            AttachListenersToCollection<HotRunnerModel>(HotRunnerList);
-            AttachListenersToCollection<CommParamModel>(CommList);
-            AttachListenersToCollection<ProgramPatternModel>(PatternList);
-            AttachListenersToCollection<ProgramStepModel>(StepList);
-            
-            // 监听新增项
-            PVSVList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            PIDList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            AlarmList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            OutputList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            SlopeList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            InputAdjList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            CTList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            EventList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            HotRunnerList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            CommList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            PatternList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-            StepList.CollectionChanged += (sender, e) => 
-            {
-                if (e.NewItems != null)
-                    foreach (INotifyPropertyChanged item in e.NewItems)
-                        item.PropertyChanged += ModelPropertyChanged;
-            };
-        }
-
-        private void AttachListenersToCollection<T>(ObservableCollection<T> collection) where T : INotifyPropertyChanged
-        {
-            foreach (var item in collection)
-            {
-                item.PropertyChanged += ModelPropertyChanged;
-            }
-        }
-
-        private void ModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            SaveConfig();
-        }
-
-        private void SaveConfig()
-        {
-            if (_isConfigSaving) return;
-            
-            try
-            {
-                _isConfigSaving = true;
-                
-                AppConfig config = new AppConfig
-                {
-                    PVSVList = PVSVList.ToList(),
-                    PIDList = PIDList.ToList(),
-                    AlarmList = AlarmList.ToList(),
-                    OutputList = OutputList.ToList(),
-                    SlopeList = SlopeList.ToList(),
-                    InputAdjList = InputAdjList.ToList(),
-                    CTList = CTList.ToList(),
-                    EventList = EventList.ToList(),
-                    HotRunnerList = HotRunnerList.ToList(),
-                    CommList = CommList.ToList(),
-                    PatternList = PatternList.ToList(),
-                    StepList = StepList.ToList(),
-                    SerialPortSettings = new SerialPortSettings
-                    {
-                        PortName = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1",
-                        BaudRate = int.TryParse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"), out int baud) ? baud : 9600,
-                        Parity = "Even",
-                        DataBits = 8,
-                        StopBits = "1",
-                        Protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU",
-                        SlaveId = int.TryParse(txtStationCode.Text, out int id) ? id : 1
-                    }
-                };
-                
-                ConfigManager.SaveConfig(config);
-                System.Diagnostics.Debug.WriteLine("[Config] 配置保存成功");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Config] 保存配置失败: {ex.Message}");
-            }
-            finally
-            {
-                _isConfigSaving = false;
-            }
         }
 
         public ObservableCollection<AlarmModel> AlarmList { get; } = new();
