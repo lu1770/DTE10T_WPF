@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     
-    <AssemblyName>基恩士20站.温控器1</AssemblyName>
+    <AssemblyName>DTE10T_WPF</AssemblyName>
     <RootNamespace>DTE10T_WPF</RootNamespace>
   </PropertyGroup>
   <ItemGroup>

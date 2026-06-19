@@ -58,17 +58,12 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Restore NuGet packages
+        run: dotnet restore DTE10T_WPF.slnx
+
       # --- 制品: 单文件自包含 exe (win-x64) ---
       - name: Publish — Single-file exe (win-x64)
-        run: |
-          dotnet publish DTE10T_WPF.csproj `
-            --configuration Release `
-            --runtime win-x64 `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:PublishReadyToRun=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
-            --output ./publish
+        run: dotnet publish DTE10T_WPF.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true --output ./publish
 
       # --- 上传单文件 exe ---
       - name: Upload Single-file exe
