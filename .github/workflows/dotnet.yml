@@ -147,6 +147,7 @@ jobs:
           files: |
             ./publish/single-file/DTE10T_WPF.exe
             ./publish/portable-x86/DTE10T_WPF.exe
+            ./publish/framework-dependent/DTE10T_WPF.exe
           draft: false
           prerelease: true
         env:
