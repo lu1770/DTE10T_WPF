@@ -1,5 +1,11 @@
 # 基恩士20站.温控器1 — 台达 DTE10T WPF 监控配置工具
 
+[![CI](https://github.com/Zhengyao/DTE10T_WPF/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Zhengyao/DTE10T_WPF/actions/workflows/dotnet.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.NET](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
+
+如果你觉得这个项目对你有帮助，欢迎 ⭐ Star！
+
 ## 概述
 
 基于 WPF (.NET 8) 开发的台达 DTE10T 系列温度控制器上位机软件，通过 **Modbus RTU** 协议与设备进行通讯，支持实时温度监控、参数读取与写入。
@@ -93,3 +99,42 @@ DTE10T_WPF/
 ## 授权
 
 与台达 DTE 系列操作手册配套使用，仅供技术参考。
+
+## Release
+
+请参阅 [GitHub Releases](https://github.com/Zhengyao/DTE10T_WPF/releases) 查看版本更新历史。
+
+## License
+
+本项目基于 MIT License 开源。
+
+```
+MIT License
+
+Copyright (c) 2024 Zheng Yao
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## 联系方式
+
+如果你有任何问题或建议，请通过以下方式联系：
+
+- 🐛 [Issues](https://github.com/Zhengyao/DTE10T_WPF/issues) - 报告问题或功能请求
+- 💡 [Discussions](https://github.com/Zhengyao/DTE10T_WPF/discussions) - 讨论与问答
