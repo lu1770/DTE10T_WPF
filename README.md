@@ -1,6 +1,6 @@
 # 基恩士20站.温控器1 — 台达 DTE10T WPF 监控配置工具
 
-[![CI](https://github.com/Zhengyao/DTE10T_WPF/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Zhengyao/DTE10T_WPF/actions/workflows/dotnet.yml)
+[![CI](https://github.com/lu1770/DTE10T_WPF/actions/workflows/dotnet.yml/badge.svg)](https://github.com/lu1770/DTE10T_WPF/actions/workflows/dotnet.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
 
@@ -102,7 +102,7 @@ DTE10T_WPF/
 
 ## Release
 
-请参阅 [GitHub Releases](https://github.com/Zhengyao/DTE10T_WPF/releases) 查看版本更新历史。
+请参阅 [GitHub Releases](https://github.com/lu1770/DTE10T_WPF/releases) 查看版本更新历史。
 
 ## License
 
@@ -136,5 +136,5 @@ SOFTWARE.
 
 如果你有任何问题或建议，请通过以下方式联系：
 
-- 🐛 [Issues](https://github.com/Zhengyao/DTE10T_WPF/issues) - 报告问题或功能请求
-- 💡 [Discussions](https://github.com/Zhengyao/DTE10T_WPF/discussions) - 讨论与问答
+- 🐛 [Issues](https://github.com/lu1770/DTE10T_WPF/issues) - 报告问题或功能请求
+- 💡 [Discussions](https://github.com/lu1770/DTE10T_WPF/discussions) - 讨论与问答
