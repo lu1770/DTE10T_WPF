@@ -3,7 +3,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <PlatformTarget>x64</PlatformTarget>
     
     <AssemblyName>基恩士20站.温控器1</AssemblyName>
     <RootNamespace>DTE10T_WPF</RootNamespace>
