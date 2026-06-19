@@ -58,7 +58,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      # --- 制品 1: 单文件自包含 exe ---
+      # --- 制品: 单文件自包含 exe (win-x64) ---
       - name: Publish — Single-file exe (win-x64)
         run: |
           dotnet publish DTE10T_WPF.csproj `
@@ -68,49 +68,14 @@ jobs:
             -p:PublishSingleFile=true `
             -p:PublishReadyToRun=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
-            --output ./publish/single-file
-
-      # --- 制品 2: 框架依赖版 (更小体积) ---
-      - name: Publish — Framework-dependent (win-x64)
-        run: |
-          dotnet publish DTE10T_WPF.csproj `
-            --configuration Release `
-            --runtime win-x64 `
-            --self-contained false `
-            --output ./publish/framework-dependent
-
-      # --- 制品 3: 便携版 (win-x86, 兼容 32 位系统) ---
-      - name: Publish — Portable (win-x86)
-        run: |
-          dotnet publish DTE10T_WPF.csproj `
-            --configuration Release `
-            --runtime win-x86 `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            --output ./publish/portable-x86
+            --output ./publish
 
       # --- 上传单文件 exe ---
       - name: Upload Single-file exe
         uses: actions/upload-artifact@v4
         with:
           name: DTE10T_WPF-win-x64-standalone
-          path: ./publish/single-file/DTE10T_WPF.exe
-          retention-days: 90
-
-      # --- 上传框架依赖版 ---
-      - name: Upload Framework-dependent build
-        uses: actions/upload-artifact@v4
-        with:
-          name: DTE10T_WPF-win-x64-framework-dependent
-          path: ./publish/framework-dependent/**
-          retention-days: 90
-
-      # --- 上传 x86 便携版 ---
-      - name: Upload Portable x86 build
-        uses: actions/upload-artifact@v4
-        with:
-          name: DTE10T_WPF-win-x86-standalone
-          path: ./publish/portable-x86/DTE10T_WPF.exe
+          path: ./publish/DTE10T_WPF.exe
           retention-days: 90
 
       # --- 创建版本标签并发布 GitHub Release ---
@@ -134,20 +99,16 @@ jobs:
 
             | 文件 | 说明 |
             |------|------|
-            | `DTE10T_WPF.exe` (standalone x64) | **推荐** — 单文件、自包含，无需安装 .NET 运行时，直接运行 |
-            | `DTE10T_WPF.exe` (standalone x86) | 兼容 32 位 Windows 系统 |
-            | framework-dependent | 需目标机器已安装 .NET 8 Desktop Runtime |
+            | `DTE10T_WPF.exe` | **推荐** — 单文件、自包含，无需安装 .NET 运行时，直接运行 |
 
             ### 使用方法
 
-            1. 下载对应版本的 `DTE10T_WPF.exe`
+            1. 下载 `DTE10T_WPF.exe`
             2. 用 RS-485 转 USB 线缆连接 DTE10T 设备
             3. 确认 COM 口编号（设备管理器 → 端口）
             4. 打开软件，设置 COM 口和波特率（默认 9600），点击连接
           files: |
-            ./publish/single-file/DTE10T_WPF.exe
-            ./publish/portable-x86/DTE10T_WPF.exe
-            ./publish/framework-dependent/DTE10T_WPF.exe
+            ./publish/DTE10T_WPF.exe
           draft: false
           prerelease: true
         env:
