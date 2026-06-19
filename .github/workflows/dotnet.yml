@@ -1,28 +1,150 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+# ============================================================
+# DTE10T_WPF — CI/CD Pipeline
+# ============================================================
+# 触发条件: 推送到 main / PR 到 main
+# 功能: 编译验证 → 发布 Release → 构建单文件 exe → 上传制品
+# ============================================================
 
-name: .NET
+name: .NET Build & Publish
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
+  # ==========================================================
+  # Job 1: 编译验证 (Build Verification)
+  # ==========================================================
   build:
-
-    runs-on: ubuntu-latest
+    name: Build & Verify
+    runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore NuGet packages
+        run: dotnet restore DTE10T_WPF.slnx
+
+      - name: Build (Debug)
+        run: dotnet build DTE10T_WPF.slnx --no-restore --configuration Debug
+
+  # ==========================================================
+  # Job 2: 发布制品 (Release Publish)
+  # ==========================================================
+  publish:
+    name: Publish Release Artifacts
+    runs-on: windows-latest
+    needs: build
+    # 仅 main 分支的 push 才发布制品（PR 不发布）
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # --- 制品 1: 单文件自包含 exe ---
+      - name: Publish — Single-file exe (win-x64)
+        run: |
+          dotnet publish DTE10T_WPF.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishReadyToRun=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            --output ./publish/single-file
+
+      # --- 制品 2: 框架依赖版 (更小体积) ---
+      - name: Publish — Framework-dependent (win-x64)
+        run: |
+          dotnet publish DTE10T_WPF.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained false `
+            --output ./publish/framework-dependent
+
+      # --- 制品 3: 便携版 (win-x86, 兼容 32 位系统) ---
+      - name: Publish — Portable (win-x86)
+        run: |
+          dotnet publish DTE10T_WPF.csproj `
+            --configuration Release `
+            --runtime win-x86 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            --output ./publish/portable-x86
+
+      # --- 上传单文件 exe ---
+      - name: Upload Single-file exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: DTE10T_WPF-win-x64-standalone
+          path: ./publish/single-file/DTE10T_WPF.exe
+          retention-days: 90
+
+      # --- 上传框架依赖版 ---
+      - name: Upload Framework-dependent build
+        uses: actions/upload-artifact@v4
+        with:
+          name: DTE10T_WPF-win-x64-framework-dependent
+          path: ./publish/framework-dependent/**
+          retention-days: 90
+
+      # --- 上传 x86 便携版 ---
+      - name: Upload Portable x86 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: DTE10T_WPF-win-x86-standalone
+          path: ./publish/portable-x86/DTE10T_WPF.exe
+          retention-days: 90
+
+      # --- 创建版本标签并发布 GitHub Release ---
+      - name: Extract version info
+        id: version
+        run: |
+          $version = (Get-Date -Format "yyyy.MM.dd.HHmm")
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Release v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## DTE10T_WPF 自动构建
+
+            > 由 GitHub Actions 自动构建，仅供测试使用。
+
+            ### 下载说明
+
+            | 文件 | 说明 |
+            |------|------|
+            | `DTE10T_WPF.exe` (standalone x64) | **推荐** — 单文件、自包含，无需安装 .NET 运行时，直接运行 |
+            | `DTE10T_WPF.exe` (standalone x86) | 兼容 32 位 Windows 系统 |
+            | framework-dependent | 需目标机器已安装 .NET 8 Desktop Runtime |
+
+            ### 使用方法
+
+            1. 下载对应版本的 `DTE10T_WPF.exe`
+            2. 用 RS-485 转 USB 线缆连接 DTE10T 设备
+            3. 确认 COM 口编号（设备管理器 → 端口）
+            4. 打开软件，设置 COM 口和波特率（默认 9600），点击连接
+          files: |
+            ./publish/single-file/DTE10T_WPF.exe
+            ./publish/portable-x86/DTE10T_WPF.exe
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
