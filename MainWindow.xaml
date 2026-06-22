@@ -163,7 +163,7 @@
             Grid.RowSpan="2"
             Grid.ColumnSpan="2"
             Margin="0,0,0,790"
-            Padding="12,6"
+            Padding="12,0"
             Background="#E8F5E9"
             BorderBrush="#A5D6A7"
             BorderThickness="0,0,0,1">
