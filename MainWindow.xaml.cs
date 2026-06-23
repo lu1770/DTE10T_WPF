@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
@@ -284,10 +285,11 @@ namespace DTE10T_WPF
                     ledPWR.Fill = Brushes.LimeGreen;
 
                     // 连接成功后读取一次全部数据
-                    await PollAllData();
+                    await PollAllDataAsync();
 
                     // 启动定时轮询 (每 1 秒)
-                    _pollTimer = new System.Threading.Timer(PollCallback, null, 1000, 1000);
+                    var ms = 1000;
+                    _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
                 }
                 else
                 {
@@ -347,7 +349,7 @@ namespace DTE10T_WPF
                 btnRefresh.IsEnabled = false;
                 try
                 {
-                    await PollAllData();
+                    await PollAllDataAsync();
                 }
                 catch(Exception ex)
                 {
@@ -1231,32 +1233,41 @@ namespace DTE10T_WPF
             return (float)(value * scaling);
         }
 
-        private async Task PollAllData()
+        private async Task PollAllDataAsync()
         {
             if(_modbus == null)
             {
                 return;
             }
-
+            var ws = Stopwatch.StartNew();
             try
             {
                 // ===== 1. 读取 PV 值 (H1000~H1007) =====
+                var step1Start = Stopwatch.StartNew();
                 var pvs = await _modbus.ReadAllPVAsync();
+                Debug.WriteLine($"All PVS {string.Join(",", pvs)}");
                 for(int i = 0; i < 8 && i < TempCards.Count; i++)
                 {
                     TempCards[i].PV = Math.Round(pvs[i], 1);
                     PVSVList[i].PV = Math.Round(pvs[i], 1);
                 }
+                step1Start.Stop();
+                Debug.WriteLine($"[步骤1] 读取PV值耗时: {step1Start.ElapsedMilliseconds}ms");
 
                 // ===== 2. 读取 SV 值 (H1008~H100F) =====
+                var step2Start = Stopwatch.StartNew();
                 var svs = await _modbus.ReadAllSVAsync();
+                Debug.WriteLine($"All SV {string.Join(",", svs)}");
                 for(int i = 0; i < 8 && i < TempCards.Count; i++)
                 {
                     TempCards[i].SV = Math.Round(svs[i], 1);
                     PVSVList[i].SV = Math.Round(svs[i], 1);
                 }
+                step2Start.Stop();
+                Debug.WriteLine($"[步骤2] 读取SV值耗时: {step2Start.ElapsedMilliseconds}ms");
 
                 // ===== 3. 读取传感器类型 (H10A0~H10A7) =====
+                var step3Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     ushort sensorVal = await _modbus.ReadHoldingRegisterAsync(0x10A0 + i);
@@ -1265,9 +1276,13 @@ namespace DTE10T_WPF
                         : $"未知({sensorVal})";
                     TempCards[i].InputType = sensorName;
                     PVSVList[i].InputType = sensorName;
+                    Debug.WriteLine($"All cards {sensorName}");
                 }
+                step3Start.Stop();
+                Debug.WriteLine($"[步骤3] 读取传感器类型耗时: {step3Start.ElapsedMilliseconds}ms");
 
                 // ===== 4. 读取 PID 参数 =====
+                var step4Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     // Pb (H1028~H102F)
@@ -1309,8 +1324,12 @@ namespace DTE10T_WPF
                     ushort atStatus = await _modbus.ReadHoldingRegisterAsync(0x10E0 + i);
                     PIDList[i].ATEnabled = atStatus == 1;
                 }
+                Debug.WriteLine($"All PIDList {PIDList}");
+                step4Start.Stop();
+                Debug.WriteLine($"[步骤4] 读取PID参数耗时: {step4Start.ElapsedMilliseconds}ms");
 
                 // ===== 5. 读取警报设定 =====
+                var step5Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     // 警报上限 (H1080~H1087)
@@ -1332,8 +1351,12 @@ namespace DTE10T_WPF
                     ushort delay = await _modbus.ReadHoldingRegisterAsync(0x1990 + i);
                     AlarmList[i].AlarmDelay = delay;
                 }
+                Debug.WriteLine($"All AlarmList {AlarmList}");
+                step5Start.Stop();
+                Debug.WriteLine($"[步骤5] 读取警报设定耗时: {step5Start.ElapsedMilliseconds}ms");
 
                 // ===== 6. 读取输出配置 =====
+                var step6Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     // OUT1 功能 (H10A8~H10AF)
@@ -1354,15 +1377,23 @@ namespace DTE10T_WPF
                     ushort outMin = await _modbus.ReadHoldingRegisterAsync(0x1988 + i);
                     OutputList[i].OutMin = outMin;
                 }
+                Debug.WriteLine($"All OutputList {OutputList}");
+                step6Start.Stop();
+                Debug.WriteLine($"[步骤6] 读取输出配置耗时: {step6Start.ElapsedMilliseconds}ms");
 
                 // ===== 7. 读取斜率设定 (H1970~H1977) =====
+                var step7Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     ushort slopeVal = await _modbus.ReadHoldingRegisterAsync(0x1970 + i);
                     SlopeList[i].Slope = slopeVal;
                 }
+                Debug.WriteLine($"All SlopeList {SlopeList}");
+                step7Start.Stop();
+                Debug.WriteLine($"[步骤7] 读取斜率设定耗时: {step7Start.ElapsedMilliseconds}ms");
 
                 // ===== 8. 读取输入调整 =====
+                var step8Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     // 补偿值 (H1020~H1027)
@@ -1383,7 +1414,12 @@ namespace DTE10T_WPF
                 ushort frLow = await _modbus.ReadHoldingRegisterAsync(0x10FA);
                 InputAdjList[0].FilterRange = Math.Round(ParseFloat(frHigh, frLow, 0.1), 1);
 
+                Debug.WriteLine($"All InputAdjList {InputAdjList}");
+                step8Start.Stop();
+                Debug.WriteLine($"[步骤8] 读取输入调整耗时: {step8Start.ElapsedMilliseconds}ms");
+
                 // ===== 9. 读取 CT 电流 =====
+                var step9Start = Stopwatch.StartNew();
                 for(int i = 0; i < 4; i++)
                 {
                     // CT 保持值 (H19A0~H19A3)
@@ -1400,16 +1436,24 @@ namespace DTE10T_WPF
                     ushort ctAdj = await _modbus.ReadHoldingRegisterAsync(0x19A8 + i);
                     CTList[i].CTAdjust = (short)ctAdj;
                 }
+                Debug.WriteLine($"All CTList {CTList}");
+                step9Start.Stop();
+                Debug.WriteLine($"[步骤9] 读取CT电流耗时: {step9Start.ElapsedMilliseconds}ms");
 
                 // ===== 10. 读取 EVENT 功能 (H1998~H199F) =====
+                var step10Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     ushort evtVal = await _modbus.ReadHoldingRegisterAsync(0x1998 + i);
                     EventList[i].EventFunction = evtVal < EventFunctionNames.Length
                         ? EventFunctionNames[evtVal] : $"未知({evtVal})";
                 }
+                Debug.WriteLine($"All EventList {EventList}");
+                step10Start.Stop();
+                Debug.WriteLine($"[步骤10] 读取EVENT功能耗时: {step10Start.ElapsedMilliseconds}ms");
 
                 // ===== 11. 读取热流道参数 =====
+                var step11Start = Stopwatch.StartNew();
                 for(int i = 0; i < 8; i++)
                 {
                     // 界限温度 (H1960~H1967)
@@ -1433,12 +1477,19 @@ namespace DTE10T_WPF
                     ushort slope = await _modbus.ReadHoldingRegisterAsync(0x1970 + i);
                     HotRunnerList[i].Slope = slope;
                 }
+                Debug.WriteLine($"All HotRunnerList {HotRunnerList}");
+                step11Start.Stop();
+                Debug.WriteLine($"[步骤11] 读取热流道参数耗时: {step11Start.ElapsedMilliseconds}ms");
 
                 // ===== 12. 读取通讯参数 =====
+                var step12Start = Stopwatch.StartNew();
                 var commParams = await _modbus.ReadCommParamsAsync();
                 UpdateCommParamsUI(commParams);
+                step12Start.Stop();
+                Debug.WriteLine($"[步骤12] 读取通讯参数耗时: {step12Start.ElapsedMilliseconds}ms");
 
                 // ===== 13. 更新 LED 状态 =====
+                var step13Start = Stopwatch.StartNew();
                 var leds = await _modbus.ReadAllLEDStatusAsync();
                 for(int i = 0; i < 8; i++)
                 {
@@ -1461,6 +1512,12 @@ namespace DTE10T_WPF
                         PIDList[i].ATEnabled = true;
                     }
                 }
+                Debug.WriteLine($"All PIDList {PIDList}");
+                step13Start.Stop();
+                Debug.WriteLine($"[步骤13] 更新LED状态耗时: {step13Start.ElapsedMilliseconds}ms");
+
+                // ===== 14. 更新状态指示 =====
+                var step14Start = Stopwatch.StartNew();
 
                 // 检查错误码
                 var (hasError, errorCodes) = await _modbus.CheckErrorsAsync();
@@ -1517,6 +1574,8 @@ namespace DTE10T_WPF
 
                 // 更新实时曲线图表
                 UpdateChart();
+                step14Start.Stop();
+                Debug.WriteLine($"[步骤14] 更新状态指示耗时: {step14Start.ElapsedMilliseconds}ms");
             }
             catch(Exception ex)
             {
@@ -1525,6 +1584,8 @@ namespace DTE10T_WPF
                 txtStatus.Text = $"通讯异常: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
             }
+            ws.Stop();
+            Debug.WriteLine($"总耗时:{ws.ElapsedMilliseconds}ms");
         }
 
         // ========== 定时轮询 ==========
@@ -1537,7 +1598,7 @@ namespace DTE10T_WPF
 
             try
             {
-                await Dispatcher.InvokeAsync(async () => await PollAllData());
+                await Dispatcher.InvokeAsync(async () => await PollAllDataAsync());
             }
             catch(Exception ex)
             {
@@ -1682,6 +1743,7 @@ namespace DTE10T_WPF
             }
 
             _temperaturePlotModel.InvalidatePlot(true);
+            Debug.WriteLine($"更新图表");
         }
 
         private void UpdateCommParamsUI(Dictionary<string, ushort> commParams)
