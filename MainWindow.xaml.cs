@@ -331,6 +331,7 @@ namespace DTE10T_WPF
             btnConnect.IsEnabled = false;
             txtStatus.Text = "正在连接...";
             txtStatus.Foreground = Brushes.Orange;
+            ledCOM.Fill = Brushes.Yellow;
 
             try
             {
@@ -371,6 +372,7 @@ namespace DTE10T_WPF
                     txtDeviceInfo.Text = $"| 基恩士20站.温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
 
                     ledPWR.Fill = Brushes.LimeGreen;
+                    ledCOM.Fill = Brushes.Green;
 
                     // 连接成功后读取一次全部数据
                     await PollAllDataAsync();
@@ -381,18 +383,51 @@ namespace DTE10T_WPF
                 }
                 else
                 {
-                    txtStatus.Text = "连接失败";
+                    txtStatus.Text = "连接失败: 无法建立连接，请检查串口设置";
                     txtStatus.Foreground = Brushes.Red;
                     btnConnect.IsEnabled = true;
+                    ledCOM.Fill = Brushes.Red;
                     System.Diagnostics.Debug.WriteLine("[Connect] 无法连接到温控器，请检查: COM端口、串口占用、波特率/站号");
                 }
             }
             catch(Exception ex)
             {
-                txtStatus.Text = "连接异常";
+                string errorMessage = GetConnectionErrorMessage(ex);
+                txtStatus.Text = $"连接失败: {errorMessage}";
                 txtStatus.Foreground = Brushes.Red;
                 btnConnect.IsEnabled = true;
+                ledCOM.Fill = Brushes.Red;
                 System.Diagnostics.Debug.WriteLine($"[Connect] 连接异常: {ex.Message}");
+            }
+        }
+
+        ///<summary>
+        /// 获取连接失败的详细错误信息</summary>
+        private string GetConnectionErrorMessage(Exception ex)
+        {
+            if(ex is System.IO.IOException)
+            {
+                return "串口无法打开，请检查端口是否被占用或不存在";
+            }
+            else if(ex is UnauthorizedAccessException)
+            {
+                return "权限不足，无法访问串口";
+            }
+            else if(ex is ArgumentOutOfRangeException)
+            {
+                return "串口参数无效，请检查波特率等设置";
+            }
+            else if(ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+            {
+                return "连接超时，请检查设备是否在线或通讯参数是否正确";
+            }
+            else if(ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return "串口不存在，请检查COM端口设置";
+            }
+            else
+            {
+                return ex.Message;
             }
         }
 
