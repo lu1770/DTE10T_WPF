@@ -9,6 +9,8 @@ namespace DTE10T_WPF
         private string _channel = string.Empty;
         private string _inputType = string.Empty;
         private bool _isEnabled = true;
+        private double _out1;
+        private double _out2;
         private double _pv;
         private double _rangeHigh;
         private double _rangeLow;
@@ -44,6 +46,26 @@ namespace DTE10T_WPF
             set
             {
                 _isEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double Out1
+        {
+            get => _out1;
+            set
+            {
+                _out1 = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double Out2
+        {
+            get => _out2;
+            set
+            {
+                _out2 = value;
                 OnPropertyChanged();
             }
         }

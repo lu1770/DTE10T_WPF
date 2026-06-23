@@ -337,6 +337,20 @@
                                 Content="实时曲线"
                                 IsChecked="True"
                                 Unchecked="ChkShowChart_CheckedChanged" />
+                            <CheckBox
+                                x:Name="chkShowOut1"
+                                Margin="8,0,0,0"
+                                Checked="ChkShowOut1_CheckedChanged"
+                                Content="输出1"
+                                IsChecked="False"
+                                Unchecked="ChkShowOut1_CheckedChanged" />
+                            <CheckBox
+                                x:Name="chkShowOut2"
+                                Margin="8,0,0,0"
+                                Checked="ChkShowOut2_CheckedChanged"
+                                Content="输出2"
+                                IsChecked="False"
+                                Unchecked="ChkShowOut2_CheckedChanged" />
                         </StackPanel>
                     </StackPanel>
                     <!--  内容区域  -->
@@ -438,6 +452,23 @@
                                         Margin="4"
                                         Click="BtnSaveImage_Click"
                                         Content="保存图像" />
+                                    <Button
+                                        x:Name="btnStartRecord"
+                                        Width="80"
+                                        Margin="4"
+                                        Click="BtnStartRecord_Click"
+                                        Content="开始记录"
+                                        Background="#4CAF50"
+                                        Foreground="White" />
+                                    <Button
+                                        x:Name="btnStopRecord"
+                                        Width="80"
+                                        Margin="4"
+                                        Click="BtnStopRecord_Click"
+                                        Content="结束记录"
+                                        Background="#F44336"
+                                        Foreground="White"
+                                        IsEnabled="False" />
                                 </StackPanel>
                                 <oxy:PlotView
                                     x:Name="pvTemperature"

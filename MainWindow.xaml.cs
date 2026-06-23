@@ -87,11 +87,16 @@ namespace DTE10T_WPF
         // ========== 配置管理 ==========
         private bool _isConfigSaving = false;
         private bool _isConnected = false;
+        private bool _isRecording = false;
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
+        private LineSeries[]? _out1Series;
+        private LineSeries[]? _out2Series;
         private System.Threading.Timer? _pollTimer;
         private int _readCount = 0;
+        private List<RecordedDataPoint> _recordedData = new();
+        private DateTime _recordStartTime;
         // ========== OxyPlot 图表相关 ==========
         private PlotModel? _temperaturePlotModel;
 
@@ -320,53 +325,6 @@ namespace DTE10T_WPF
 
         private void BtnClearChart_Click(object sender, RoutedEventArgs e) { ClearChart(); }
 
-        private void BtnSaveImage_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if(_temperaturePlotModel == null)
-                {
-                    MessageBox.Show("没有可保存的图表数据", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-
-                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "PNG 图像 (*.png)|*.png|JPEG 图像 (*.jpg)|*.jpg|所有文件 (*.*)|*.*",
-                    FilterIndex = 1,
-                    FileName = $"温度曲线_{DateTime.Now:yyyyMMdd_HHmmss}.png",
-                    Title = "保存图像"
-                };
-
-                bool? result = saveFileDialog.ShowDialog();
-                if(result == true)
-                {
-                    string filePath = saveFileDialog.FileName;
-                    string extension = Path.GetExtension(filePath).ToLower();
-
-                    using(var stream = File.Create(filePath))
-                    {
-                        var exporter = new PngExporter
-                        {
-                            Width = (int)pvTemperature.ActualWidth,
-                            Height = (int)pvTemperature.ActualHeight
-                        };
-
-                        exporter.Export(_temperaturePlotModel, stream);
-                    }
-
-                    MessageBox.Show($"图像已保存到:\n{filePath}", "保存成功", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
-                }
-            }
-            catch(Exception ex)
-            {
-                MessageBox.Show($"保存图像失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                System.Diagnostics.Debug.WriteLine($"[SaveImage] 保存失败: {ex.Message}");
-            }
-        }
-
         // ========== 连接 / 断开 ==========
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
@@ -492,6 +450,53 @@ namespace DTE10T_WPF
             }
         }
 
+        private void BtnSaveImage_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if(_temperaturePlotModel == null)
+                {
+                    MessageBox.Show("没有可保存的图表数据", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "PNG 图像 (*.png)|*.png|JPEG 图像 (*.jpg)|*.jpg|所有文件 (*.*)|*.*",
+                    FilterIndex = 1,
+                    FileName = $"温度曲线_{DateTime.Now:yyyyMMdd_HHmmss}.png",
+                    Title = "保存图像"
+                };
+
+                bool? result = saveFileDialog.ShowDialog();
+                if(result == true)
+                {
+                    string filePath = saveFileDialog.FileName;
+                    string extension = Path.GetExtension(filePath).ToLower();
+
+                    using(var stream = File.Create(filePath))
+                    {
+                        var exporter = new PngExporter
+                        {
+                            Width = (int)pvTemperature.ActualWidth,
+                            Height = (int)pvTemperature.ActualHeight
+                        };
+
+                        exporter.Export(_temperaturePlotModel, stream);
+                    }
+
+                    MessageBox.Show($"图像已保存到:\n{filePath}", "保存成功", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show($"保存图像失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"[SaveImage] 保存失败: {ex.Message}");
+            }
+        }
+
         // ========== 通道选择 ==========
         private void BtnSelAll_Click(object sender, RoutedEventArgs e)
         {
@@ -505,6 +510,35 @@ namespace DTE10T_WPF
             chkCH5.IsChecked = chkCH6.IsChecked = chkCH7.IsChecked = chkCH8.IsChecked = false;
         }
 
+        private void BtnStartRecord_Click(object sender, RoutedEventArgs e)
+        {
+            _isRecording = true;
+            _recordStartTime = DateTime.Now;
+            _recordedData.Clear();
+
+            btnStartRecord.IsEnabled = false;
+            btnStopRecord.IsEnabled = true;
+            txtStatus.Text = "📝 正在记录数据...";
+            txtStatus.Foreground = Brushes.Blue;
+        }
+
+        private void BtnStopRecord_Click(object sender, RoutedEventArgs e)
+        {
+            _isRecording = false;
+            btnStartRecord.IsEnabled = true;
+            btnStopRecord.IsEnabled = false;
+
+            if(_recordedData.Count > 0)
+            {
+                ExportToCsv();
+            }
+            else
+            {
+                txtStatus.Text = "没有记录的数据可导出";
+                txtStatus.Foreground = Brushes.Gray;
+            }
+        }
+
         private void ChkChannel_CheckedChanged(object sender, RoutedEventArgs e) { UpdateChart(); }
 
         private void ChkShowChart_CheckedChanged(object sender, RoutedEventArgs e)
@@ -515,11 +549,53 @@ namespace DTE10T_WPF
             }
         }
 
+        private void ChkShowOut1_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            bool showOut1 = chkShowOut1?.IsChecked ?? false;
+            if(_out1Series != null)
+            {
+                for(int i = 0; i < 8; i++)
+                {
+                    CheckBox? chkBox = FindName($"chkCH{i + 1}") as CheckBox;
+                    bool isVisible = chkBox?.IsChecked ?? false;
+                    _out1Series[i].IsVisible = showOut1 && isVisible;
+                }
+            }
+        }
+
+        private void ChkShowOut2_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            bool showOut2 = chkShowOut2?.IsChecked ?? false;
+            if(_out2Series != null)
+            {
+                for(int i = 0; i < 8; i++)
+                {
+                    CheckBox? chkBox = FindName($"chkCH{i + 1}") as CheckBox;
+                    bool isVisible = chkBox?.IsChecked ?? false;
+                    _out2Series[i].IsVisible = showOut2 && isVisible;
+                }
+            }
+        }
+
         private void ClearChart()
         {
             if(_channelSeries != null)
             {
                 foreach(var series in _channelSeries)
+                {
+                    series.Points.Clear();
+                }
+            }
+            if(_out1Series != null)
+            {
+                foreach(var series in _out1Series)
+                {
+                    series.Points.Clear();
+                }
+            }
+            if(_out2Series != null)
+            {
+                foreach(var series in _out2Series)
                 {
                     series.Points.Clear();
                 }
@@ -1061,6 +1137,76 @@ namespace DTE10T_WPF
             }
         }
 
+        private void ExportToCsv()
+        {
+            try
+            {
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "CSV 文件 (*.csv)|*.csv|所有文件 (*.*)|*.*",
+                    FilterIndex = 1,
+                    FileName = $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv",
+                    Title = "导出CSV文件"
+                };
+
+                bool? result = saveFileDialog.ShowDialog();
+                if(result == true)
+                {
+                    string filePath = saveFileDialog.FileName;
+
+                    using(var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                    {
+                        // 写入表头
+                        writer.Write("时间戳,相对时间(s)");
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",CH{i + 1}(℃)");
+                        }
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",CH{i + 1}输出1(%)");
+                        }
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",CH{i + 1}输出2(%)");
+                        }
+                        writer.WriteLine();
+
+                        // 写入数据
+                        foreach(var point in _recordedData)
+                        {
+                            writer.Write($"{point.Timestamp:yyyy-MM-dd HH:mm:ss},{point.ElapsedSeconds:F2}");
+                            for(int i = 0; i < 8; i++)
+                            {
+                                writer.Write($",{point.CHValues[i]:F1}");
+                            }
+                            for(int i = 0; i < 8; i++)
+                            {
+                                writer.Write($",{point.Out1Values[i]:F1}");
+                            }
+                            for(int i = 0; i < 8; i++)
+                            {
+                                writer.Write($",{point.Out2Values[i]:F1}");
+                            }
+                            writer.WriteLine();
+                        }
+                    }
+
+                    txtStatus.Text = $"✅ 已导出 {_recordedData.Count} 条数据";
+                    txtStatus.Foreground = Brushes.Green;
+
+                    MessageBox.Show($"数据已导出到:\n{filePath}", "导出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"[ExportCSV] 导出失败: {ex.Message}");
+            }
+        }
+
         // ========== DataGrid 编辑事件处理 ==========
 
         ///<summary>
@@ -1228,7 +1374,27 @@ namespace DTE10T_WPF
             };
             _temperaturePlotModel.Axes.Add(tempAxis);
 
+            var outputAxis = new LinearAxis
+            {
+                Position = AxisPosition.Right,
+                Title = "输出 (%)",
+                Minimum = 0,
+                Maximum = 100,
+                MajorGridlineStyle = LineStyle.Solid,
+                MinorGridlineStyle = LineStyle.Dot,
+                MajorGridlineColor = OxyColors.LightGray,
+                MinorGridlineColor = OxyColors.LightGray,
+                TitleFont = "微软雅黑",
+                TitleFontSize = 12,
+                Font = "微软雅黑",
+                FontSize = 11,
+                Key = "OutputAxis"
+            };
+            _temperaturePlotModel.Axes.Add(outputAxis);
+
             _channelSeries = new LineSeries[8];
+            _out1Series = new LineSeries[8];
+            _out2Series = new LineSeries[8];
             for(int i = 0; i < 8; i++)
             {
                 _channelSeries[i] = new LineSeries
@@ -1240,6 +1406,30 @@ namespace DTE10T_WPF
                     IsVisible = i < 4
                 };
                 _temperaturePlotModel.Series.Add(_channelSeries[i]);
+
+                _out1Series[i] = new LineSeries
+                {
+                    Title = $"CH{i + 1} 输出1",
+                    Color = ChannelColors[i],
+                    StrokeThickness = 1,
+                    MarkerType = MarkerType.None,
+                    LineStyle = LineStyle.Dash,
+                    IsVisible = false,
+                    YAxisKey = "OutputAxis"
+                };
+                _temperaturePlotModel.Series.Add(_out1Series[i]);
+
+                _out2Series[i] = new LineSeries
+                {
+                    Title = $"CH{i + 1} 输出2",
+                    Color = ChannelColors[i],
+                    StrokeThickness = 1,
+                    MarkerType = MarkerType.None,
+                    LineStyle = LineStyle.Dot,
+                    IsVisible = false,
+                    YAxisKey = "OutputAxis"
+                };
+                _temperaturePlotModel.Series.Add(_out2Series[i]);
             }
 
             _chartStartTime = DateTime.Now;
@@ -1383,7 +1573,6 @@ namespace DTE10T_WPF
                 ushort delay = await _modbus!.ReadHoldingRegisterAsync(0x1990 + i);
                 AlarmList[i].AlarmDelay = delay;
             }
-            Debug.WriteLine($"All AlarmList {AlarmList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤5] 读取警报设定耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1434,7 +1623,6 @@ namespace DTE10T_WPF
                 ushort ctAdj = await _modbus!.ReadHoldingRegisterAsync(0x19A8 + i);
                 CTList[i].CTAdjust = (short)ctAdj;
             }
-            Debug.WriteLine($"All CTList {CTList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤9] 读取CT电流耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1448,7 +1636,6 @@ namespace DTE10T_WPF
                 EventList[i].EventFunction = evtVal < EventFunctionNames.Length
                     ? EventFunctionNames[evtVal] : $"未知({evtVal})";
             }
-            Debug.WriteLine($"All EventList {EventList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤10] 读取EVENT功能耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1474,7 +1661,6 @@ namespace DTE10T_WPF
                 ushort slope = await _modbus!.ReadHoldingRegisterAsync(0x1970 + i);
                 HotRunnerList[i].Slope = slope;
             }
-            Debug.WriteLine($"All HotRunnerList {HotRunnerList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤11] 读取热流道参数耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1498,7 +1684,6 @@ namespace DTE10T_WPF
             ushort frLow = await _modbus!.ReadHoldingRegisterAsync(0x10FA);
             InputAdjList[0].FilterRange = Math.Round(ParseFloat(frHigh, frLow, 0.1), 1);
 
-            Debug.WriteLine($"All InputAdjList {InputAdjList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤8] 读取输入调整耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1522,7 +1707,6 @@ namespace DTE10T_WPF
                 ushort outMin = await _modbus!.ReadHoldingRegisterAsync(0x1988 + i);
                 OutputList[i].OutMin = outMin;
             }
-            Debug.WriteLine($"All OutputList {OutputList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤6] 读取输出配置耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1563,7 +1747,6 @@ namespace DTE10T_WPF
                 ushort atStatus = await _modbus!.ReadHoldingRegisterAsync(0x10E0 + i);
                 PIDList[i].ATEnabled = atStatus == 1;
             }
-            Debug.WriteLine($"All PIDList {PIDList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤4] 读取PID参数耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1574,11 +1757,19 @@ namespace DTE10T_WPF
         {
             var stepStart = Stopwatch.StartNew();
             var pvs = await _modbus!.ReadAllPVAsync();
-            Debug.WriteLine($"All PVS {string.Join(",", pvs)}");
             for(int i = 0; i < 8 && i < TempCards.Count; i++)
             {
                 TempCards[i].PV = Math.Round(pvs[i], 1);
                 PVSVList[i].PV = Math.Round(pvs[i], 1);
+
+                // 读取输出1量和输出2量
+                ushort o1High = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
+                ushort o1Low = await _modbus!.ReadHoldingRegisterAsync(0x1071 + i);
+                PVSVList[i].Out1 = Math.Round(ParseFloat(o1High, o1Low, 0.1), 1);
+
+                ushort o2High = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
+                ushort o2Low = await _modbus!.ReadHoldingRegisterAsync(0x1079 + i);
+                PVSVList[i].Out2 = Math.Round(ParseFloat(o2High, o2Low, 0.1), 1);
             }
             stepStart.Stop();
             Debug.WriteLine($"[步骤1] 读取PV值耗时: {stepStart.ElapsedMilliseconds}ms");
@@ -1595,7 +1786,6 @@ namespace DTE10T_WPF
                     : $"未知({sensorVal})";
                 TempCards[i].InputType = sensorName;
                 PVSVList[i].InputType = sensorName;
-                Debug.WriteLine($"All cards {sensorName}");
             }
             stepStart.Stop();
             Debug.WriteLine($"[步骤3] 读取传感器类型耗时: {stepStart.ElapsedMilliseconds}ms");
@@ -1609,7 +1799,6 @@ namespace DTE10T_WPF
                 ushort slopeVal = await _modbus!.ReadHoldingRegisterAsync(0x1970 + i);
                 SlopeList[i].Slope = slopeVal;
             }
-            Debug.WriteLine($"All SlopeList {SlopeList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤7] 读取斜率设定耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1618,7 +1807,6 @@ namespace DTE10T_WPF
         {
             var stepStart = Stopwatch.StartNew();
             var svs = await _modbus!.ReadAllSVAsync();
-            Debug.WriteLine($"All SV {string.Join(",", svs)}");
             for(int i = 0; i < 8 && i < TempCards.Count; i++)
             {
                 TempCards[i].SV = Math.Round(svs[i], 1);
@@ -1626,6 +1814,26 @@ namespace DTE10T_WPF
             }
             stepStart.Stop();
             Debug.WriteLine($"[步骤2] 读取SV值耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private void RecordDataPoint()
+        {
+            if(!_isRecording)
+            {
+                return;
+            }
+
+            double elapsedSeconds = (DateTime.Now - _recordStartTime).TotalSeconds;
+            double[] chValues = new double[8];
+            double[] out1Values = new double[8];
+            double[] out2Values = new double[8];
+            for(int i = 0; i < 8; i++)
+            {
+                chValues[i] = TempCards[i].PV;
+                out1Values[i] = PVSVList[i].Out1;
+                out2Values[i] = PVSVList[i].Out2;
+            }
+            _recordedData.Add(new RecordedDataPoint(DateTime.Now, elapsedSeconds, chValues, out1Values, out2Values));
         }
 
         private void SaveConfig()
@@ -1728,7 +1936,11 @@ namespace DTE10T_WPF
                 return;
             }
 
+            RecordDataPoint();
+
             double currentTime = (DateTime.Now - _chartStartTime).TotalSeconds + _chartTimeOffset;
+            bool showOut1 = chkShowOut1?.IsChecked ?? false;
+            bool showOut2 = chkShowOut2?.IsChecked ?? false;
 
             for(int i = 0; i < 8; i++)
             {
@@ -1747,6 +1959,32 @@ namespace DTE10T_WPF
                 if(_channelSeries[i].Points.Count > MaxDataPoints)
                 {
                     _channelSeries[i].Points.RemoveAt(0);
+                }
+
+                // 更新输出1量曲线
+                if(_out1Series != null)
+                {
+                    _out1Series[i].IsVisible = showOut1 && isVisible;
+                    double out1Value = PVSVList[i].Out1;
+                    _out1Series[i].Points.Add(new DataPoint(currentTime, out1Value));
+
+                    if(_out1Series[i].Points.Count > MaxDataPoints)
+                    {
+                        _out1Series[i].Points.RemoveAt(0);
+                    }
+                }
+
+                // 更新输出2量曲线
+                if(_out2Series != null)
+                {
+                    _out2Series[i].IsVisible = showOut2 && isVisible;
+                    double out2Value = PVSVList[i].Out2;
+                    _out2Series[i].Points.Add(new DataPoint(currentTime, out2Value));
+
+                    if(_out2Series[i].Points.Count > MaxDataPoints)
+                    {
+                        _out2Series[i].Points.RemoveAt(0);
+                    }
                 }
             }
 
@@ -1819,7 +2057,6 @@ namespace DTE10T_WPF
                     PIDList[i].ATEnabled = true;
                 }
             }
-            Debug.WriteLine($"All PIDList {PIDList}");
             stepStart.Stop();
             Debug.WriteLine($"[步骤13] 更新LED状态耗时: {stepStart.ElapsedMilliseconds}ms");
         }
@@ -1952,5 +2189,27 @@ namespace DTE10T_WPF
         public ObservableCollection<TempCardModel> TempCards { get; } = new();
 
         public PlotModel? TemperaturePlotModel => _temperaturePlotModel;
+    }
+
+    public class RecordedDataPoint
+    {
+        public RecordedDataPoint(DateTime timestamp, double elapsedSeconds, double[] chValues, double[] out1Values, double[] out2Values)
+        {
+            Timestamp = timestamp;
+            ElapsedSeconds = elapsedSeconds;
+            CHValues = chValues;
+            Out1Values = out1Values;
+            Out2Values = out2Values;
+        }
+
+        public double[] CHValues { get; set; } = new double[8];
+
+        public double ElapsedSeconds { get; set; }
+
+        public double[] Out1Values { get; set; } = new double[8];
+
+        public double[] Out2Values { get; set; } = new double[8];
+
+        public DateTime Timestamp { get; set; }
     }
 }
