@@ -1,13 +1,18 @@
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
+using OxyPlot.SkiaSharp;
+using SkiaSharp;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +23,8 @@ namespace DTE10T_WPF
     public partial class MainWindow : Window
     {
         private const int MaxDataPoints = 100;
+
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
         private static readonly string[] AlarmModeNames = new[]
         {
@@ -99,6 +106,82 @@ namespace DTE10T_WPF
 
             LoadConfigIfExists();
             SetupConfigChangeListeners();
+        }
+
+        private async Task<bool> ApplyPollAllDataAsync()
+        {
+            if(_modbus == null)
+            {
+                return false;
+            }
+            var ws = Stopwatch.StartNew();
+            try
+            {
+                // 获取当前选中的Tab索引
+                int selectedTabIndex = mainTab.SelectedIndex;
+
+                // 始终需要的基础数据（PV、SV、传感器类型、LED状态、状态指示）
+                await PollPVValuesAsync();
+                await PollSVValuesAsync();
+                await PollSensorTypesAsync();
+                await UpdateLEDStatusAsync();
+                await UpdateStatusIndicatorsAsync();
+
+                // 根据当前Tab选择加载对应模块的数据
+                switch(selectedTabIndex)
+                {
+                    case 0: // 🌡 实时温度
+                        // 基础数据已加载，无需额外加载
+                        break;
+                    case 1: // 📊 PV/SV 设定
+                        // 基础数据已包含PV、SV、传感器类型
+                        break;
+                    case 2: // 🔧 PID 参数
+                        await PollPIDParametersAsync();
+                        break;
+                    case 3: // 🔔 警报设定
+                        await PollAlarmSettingsAsync();
+                        break;
+                    case 4: // ⚡ 输出配置
+                        await PollOutputConfigAsync();
+                        break;
+                    case 5: // 📐 高级功能 (斜率控制、输入补偿、CT电流、EVENT、热流道)
+                        await PollSlopeSettingsAsync();
+                        await PollInputAdjustmentsAsync();
+                        await PollCTCurrentAsync();
+                        await PollEventFunctionsAsync();
+                        await PollHotRunnerParamsAsync();
+                        break;
+                    case 6: // 🔌 通讯参数
+                        await PollCommParamsAsync();
+                        break;
+                    case 7: // 📅 可程控
+                        // 可程控数据未在轮询中加载
+                        break;
+                    default:
+                        // 默认加载所有数据
+                        await PollPIDParametersAsync();
+                        await PollAlarmSettingsAsync();
+                        await PollOutputConfigAsync();
+                        await PollSlopeSettingsAsync();
+                        await PollInputAdjustmentsAsync();
+                        await PollCTCurrentAsync();
+                        await PollEventFunctionsAsync();
+                        await PollHotRunnerParamsAsync();
+                        await PollCommParamsAsync();
+                        break;
+                }
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Poll] 轮询异常: {ex.Message}");
+                ledCOM.Fill = Brushes.Red;
+                txtStatus.Text = $"通讯异常: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+            }
+            ws.Stop();
+            Debug.WriteLine($"总耗时:{ws.ElapsedMilliseconds}ms");
+            return true;
         }
 
         private void AttachListenersToCollection<T>(ObservableCollection<T> collection) where T : INotifyPropertyChanged
@@ -236,6 +319,53 @@ namespace DTE10T_WPF
         }
 
         private void BtnClearChart_Click(object sender, RoutedEventArgs e) { ClearChart(); }
+
+        private void BtnSaveImage_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if(_temperaturePlotModel == null)
+                {
+                    MessageBox.Show("没有可保存的图表数据", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "PNG 图像 (*.png)|*.png|JPEG 图像 (*.jpg)|*.jpg|所有文件 (*.*)|*.*",
+                    FilterIndex = 1,
+                    FileName = $"温度曲线_{DateTime.Now:yyyyMMdd_HHmmss}.png",
+                    Title = "保存图像"
+                };
+
+                bool? result = saveFileDialog.ShowDialog();
+                if(result == true)
+                {
+                    string filePath = saveFileDialog.FileName;
+                    string extension = Path.GetExtension(filePath).ToLower();
+
+                    using(var stream = File.Create(filePath))
+                    {
+                        var exporter = new PngExporter
+                        {
+                            Width = (int)pvTemperature.ActualWidth,
+                            Height = (int)pvTemperature.ActualHeight
+                        };
+
+                        exporter.Export(_temperaturePlotModel, stream);
+                    }
+
+                    MessageBox.Show($"图像已保存到:\n{filePath}", "保存成功", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show($"保存图像失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"[SaveImage] 保存失败: {ex.Message}");
+            }
+        }
 
         // ========== 连接 / 断开 ==========
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
@@ -1233,360 +1363,33 @@ namespace DTE10T_WPF
             return (float)(value * scaling);
         }
 
-        private async Task PollAllDataAsync()
+        private async Task PollAlarmSettingsAsync()
         {
-            if(_modbus == null)
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
             {
-                return;
+                ushort ahHigh = await _modbus!.ReadHoldingRegisterAsync(0x1080 + i);
+                ushort ahLow = await _modbus!.ReadHoldingRegisterAsync(0x1081 + i);
+                AlarmList[i].AlarmHigh = Math.Round(ParseFloat(ahHigh, ahLow, 1), 1);
+
+                ushort alHigh = await _modbus!.ReadHoldingRegisterAsync(0x1088 + i);
+                ushort alLow = await _modbus!.ReadHoldingRegisterAsync(0x1089 + i);
+                AlarmList[i].AlarmLow = Math.Round(ParseFloat(alHigh, alLow, 1), 1);
+
+                ushort alarmMode = await _modbus!.ReadHoldingRegisterAsync(0x10C0 + i);
+                AlarmList[i].AlarmMode = alarmMode < AlarmModeNames.Length
+                    ? AlarmModeNames[alarmMode] : $"未知({alarmMode})";
+
+                ushort delay = await _modbus!.ReadHoldingRegisterAsync(0x1990 + i);
+                AlarmList[i].AlarmDelay = delay;
             }
-            var ws = Stopwatch.StartNew();
-            try
-            {
-                // ===== 1. 读取 PV 值 (H1000~H1007) =====
-                var step1Start = Stopwatch.StartNew();
-                var pvs = await _modbus.ReadAllPVAsync();
-                Debug.WriteLine($"All PVS {string.Join(",", pvs)}");
-                for(int i = 0; i < 8 && i < TempCards.Count; i++)
-                {
-                    TempCards[i].PV = Math.Round(pvs[i], 1);
-                    PVSVList[i].PV = Math.Round(pvs[i], 1);
-                }
-                step1Start.Stop();
-                Debug.WriteLine($"[步骤1] 读取PV值耗时: {step1Start.ElapsedMilliseconds}ms");
-
-                // ===== 2. 读取 SV 值 (H1008~H100F) =====
-                var step2Start = Stopwatch.StartNew();
-                var svs = await _modbus.ReadAllSVAsync();
-                Debug.WriteLine($"All SV {string.Join(",", svs)}");
-                for(int i = 0; i < 8 && i < TempCards.Count; i++)
-                {
-                    TempCards[i].SV = Math.Round(svs[i], 1);
-                    PVSVList[i].SV = Math.Round(svs[i], 1);
-                }
-                step2Start.Stop();
-                Debug.WriteLine($"[步骤2] 读取SV值耗时: {step2Start.ElapsedMilliseconds}ms");
-
-                // ===== 3. 读取传感器类型 (H10A0~H10A7) =====
-                var step3Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    ushort sensorVal = await _modbus.ReadHoldingRegisterAsync(0x10A0 + i);
-                    string sensorName = sensorVal < SensorTypeNames.Length
-                        ? SensorTypeNames[sensorVal]
-                        : $"未知({sensorVal})";
-                    TempCards[i].InputType = sensorName;
-                    PVSVList[i].InputType = sensorName;
-                    Debug.WriteLine($"All cards {sensorName}");
-                }
-                step3Start.Stop();
-                Debug.WriteLine($"[步骤3] 读取传感器类型耗时: {step3Start.ElapsedMilliseconds}ms");
-
-                // ===== 4. 读取 PID 参数 =====
-                var step4Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    // Pb (H1028~H102F)
-                    ushort pbHigh = await _modbus.ReadHoldingRegisterAsync(0x1028 + i);
-                    ushort pbLow = await _modbus.ReadHoldingRegisterAsync(0x1029 + i);
-                    PIDList[i].Pb = Math.Round(ParseFloat(pbHigh, pbLow, 0.1), 1);
-
-                    // Ti (H1030~H1037)
-                    ushort tiHigh = await _modbus.ReadHoldingRegisterAsync(0x1030 + i);
-                    ushort tiLow = await _modbus.ReadHoldingRegisterAsync(0x1031 + i);
-                    PIDList[i].Ti = Math.Round(ParseFloat(tiHigh, tiLow, 1), 0);
-
-                    // Td (H1038~H103F)
-                    ushort tdHigh = await _modbus.ReadHoldingRegisterAsync(0x1038 + i);
-                    ushort tdLow = await _modbus.ReadHoldingRegisterAsync(0x1039 + i);
-                    PIDList[i].Td = Math.Round(ParseFloat(tdHigh, tdLow, 1), 0);
-
-                    // 积分量 (H1040~H1047)
-                    ushort intHigh = await _modbus.ReadHoldingRegisterAsync(0x1040 + i);
-                    ushort intLow = await _modbus.ReadHoldingRegisterAsync(0x1041 + i);
-                    PIDList[i].Integral = Math.Round(ParseFloat(intHigh, intLow, 0.1), 1);
-
-                    // 输出1量 (H1070~H1077)
-                    ushort o1High = await _modbus.ReadHoldingRegisterAsync(0x1070 + i);
-                    ushort o1Low = await _modbus.ReadHoldingRegisterAsync(0x1071 + i);
-                    PIDList[i].Out1 = Math.Round(ParseFloat(o1High, o1Low, 0.1), 1);
-
-                    // 输出2量 (H1078~H107F)
-                    ushort o2High = await _modbus.ReadHoldingRegisterAsync(0x1078 + i);
-                    ushort o2Low = await _modbus.ReadHoldingRegisterAsync(0x1079 + i);
-                    PIDList[i].Out2 = Math.Round(ParseFloat(o2High, o2Low, 0.1), 1);
-
-                    // 控制方式 (H10B8~H10BF)
-                    ushort ctrlMode = await _modbus.ReadHoldingRegisterAsync(0x10B8 + i);
-                    PIDList[i].ControlMode = ctrlMode < ControlModeNames.Length
-                        ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
-
-                    // AT 状态 (H10E0~H10E7)
-                    ushort atStatus = await _modbus.ReadHoldingRegisterAsync(0x10E0 + i);
-                    PIDList[i].ATEnabled = atStatus == 1;
-                }
-                Debug.WriteLine($"All PIDList {PIDList}");
-                step4Start.Stop();
-                Debug.WriteLine($"[步骤4] 读取PID参数耗时: {step4Start.ElapsedMilliseconds}ms");
-
-                // ===== 5. 读取警报设定 =====
-                var step5Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    // 警报上限 (H1080~H1087)
-                    ushort ahHigh = await _modbus.ReadHoldingRegisterAsync(0x1080 + i);
-                    ushort ahLow = await _modbus.ReadHoldingRegisterAsync(0x1081 + i);
-                    AlarmList[i].AlarmHigh = Math.Round(ParseFloat(ahHigh, ahLow, 1), 1);
-
-                    // 警报下限 (H1088~H108F)
-                    ushort alHigh = await _modbus.ReadHoldingRegisterAsync(0x1088 + i);
-                    ushort alLow = await _modbus.ReadHoldingRegisterAsync(0x1089 + i);
-                    AlarmList[i].AlarmLow = Math.Round(ParseFloat(alHigh, alLow, 1), 1);
-
-                    // 警报一模式 (H10C0~H10C7)
-                    ushort alarmMode = await _modbus.ReadHoldingRegisterAsync(0x10C0 + i);
-                    AlarmList[i].AlarmMode = alarmMode < AlarmModeNames.Length
-                        ? AlarmModeNames[alarmMode] : $"未知({alarmMode})";
-
-                    // 警报延迟 (H1990~H1997)
-                    ushort delay = await _modbus.ReadHoldingRegisterAsync(0x1990 + i);
-                    AlarmList[i].AlarmDelay = delay;
-                }
-                Debug.WriteLine($"All AlarmList {AlarmList}");
-                step5Start.Stop();
-                Debug.WriteLine($"[步骤5] 读取警报设定耗时: {step5Start.ElapsedMilliseconds}ms");
-
-                // ===== 6. 读取输出配置 =====
-                var step6Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    // OUT1 功能 (H10A8~H10AF)
-                    ushort out1Ctrl = await _modbus.ReadHoldingRegisterAsync(0x10A8 + i);
-                    OutputList[i].Out1Function = out1Ctrl < OutFunctionNames.Length
-                        ? OutFunctionNames[out1Ctrl] : $"未知({out1Ctrl})";
-
-                    // OUT2 功能 (H10B0~H10B7)
-                    ushort out2Ctrl = await _modbus.ReadHoldingRegisterAsync(0x10B0 + i);
-                    OutputList[i].Out2Function = out2Ctrl < OutFunctionNames.Length
-                        ? OutFunctionNames[out2Ctrl] : $"未知({out2Ctrl})";
-
-                    // 输出最大值 (H1980~H1987)
-                    ushort outMax = await _modbus.ReadHoldingRegisterAsync(0x1980 + i);
-                    OutputList[i].OutMax = outMax;
-
-                    // 输出最小值 (H1988~H198F)
-                    ushort outMin = await _modbus.ReadHoldingRegisterAsync(0x1988 + i);
-                    OutputList[i].OutMin = outMin;
-                }
-                Debug.WriteLine($"All OutputList {OutputList}");
-                step6Start.Stop();
-                Debug.WriteLine($"[步骤6] 读取输出配置耗时: {step6Start.ElapsedMilliseconds}ms");
-
-                // ===== 7. 读取斜率设定 (H1970~H1977) =====
-                var step7Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    ushort slopeVal = await _modbus.ReadHoldingRegisterAsync(0x1970 + i);
-                    SlopeList[i].Slope = slopeVal;
-                }
-                Debug.WriteLine($"All SlopeList {SlopeList}");
-                step7Start.Stop();
-                Debug.WriteLine($"[步骤7] 读取斜率设定耗时: {step7Start.ElapsedMilliseconds}ms");
-
-                // ===== 8. 读取输入调整 =====
-                var step8Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    // 补偿值 (H1020~H1027)
-                    ushort offset = await _modbus.ReadHoldingRegisterAsync(0x1020 + i);
-                    InputAdjList[i].Offset = (short)offset;
-
-                    // 增益值 (H19B8~H19BF)
-                    ushort gain = await _modbus.ReadHoldingRegisterAsync(0x19B8 + i);
-                    InputAdjList[i].Gain = (short)gain;
-                }
-
-                // 滤波次数 (H10F7)
-                ushort filterCount = await _modbus.ReadHoldingRegisterAsync(0x10F7);
-                InputAdjList[0].FilterCount = filterCount;
-
-                // 滤波范围 (H10F9)
-                ushort frHigh = await _modbus.ReadHoldingRegisterAsync(0x10F9);
-                ushort frLow = await _modbus.ReadHoldingRegisterAsync(0x10FA);
-                InputAdjList[0].FilterRange = Math.Round(ParseFloat(frHigh, frLow, 0.1), 1);
-
-                Debug.WriteLine($"All InputAdjList {InputAdjList}");
-                step8Start.Stop();
-                Debug.WriteLine($"[步骤8] 读取输入调整耗时: {step8Start.ElapsedMilliseconds}ms");
-
-                // ===== 9. 读取 CT 电流 =====
-                var step9Start = Stopwatch.StartNew();
-                for(int i = 0; i < 4; i++)
-                {
-                    // CT 保持值 (H19A0~H19A3)
-                    ushort ctSHigh = await _modbus.ReadHoldingRegisterAsync(0x19A0 + i);
-                    ushort ctSLow = await _modbus.ReadHoldingRegisterAsync(0x19A1 + i);
-                    CTList[i].CTStatic = (int)Math.Round(ParseFloat(ctSHigh, ctSLow, 1), 0);
-
-                    // CT 动态值 (H19A4~H19A7)
-                    ushort ctDHigh = await _modbus.ReadHoldingRegisterAsync(0x19A4 + i);
-                    ushort ctDLow = await _modbus.ReadHoldingRegisterAsync(0x19A5 + i);
-                    CTList[i].CTDynamic = (int)Math.Round(ParseFloat(ctDHigh, ctDLow, 1), 0);
-
-                    // CT 调整值 (H19A8~H19AB)
-                    ushort ctAdj = await _modbus.ReadHoldingRegisterAsync(0x19A8 + i);
-                    CTList[i].CTAdjust = (short)ctAdj;
-                }
-                Debug.WriteLine($"All CTList {CTList}");
-                step9Start.Stop();
-                Debug.WriteLine($"[步骤9] 读取CT电流耗时: {step9Start.ElapsedMilliseconds}ms");
-
-                // ===== 10. 读取 EVENT 功能 (H1998~H199F) =====
-                var step10Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    ushort evtVal = await _modbus.ReadHoldingRegisterAsync(0x1998 + i);
-                    EventList[i].EventFunction = evtVal < EventFunctionNames.Length
-                        ? EventFunctionNames[evtVal] : $"未知({evtVal})";
-                }
-                Debug.WriteLine($"All EventList {EventList}");
-                step10Start.Stop();
-                Debug.WriteLine($"[步骤10] 读取EVENT功能耗时: {step10Start.ElapsedMilliseconds}ms");
-
-                // ===== 11. 读取热流道参数 =====
-                var step11Start = Stopwatch.StartNew();
-                for(int i = 0; i < 8; i++)
-                {
-                    // 界限温度 (H1960~H1967)
-                    ushort limitTemp = await _modbus.ReadHoldingRegisterAsync(0x1960 + i);
-                    HotRunnerList[i].LimitTemp = limitTemp;
-
-                    // 固定输出量 (H1968~H196F)
-                    ushort fixedOut = await _modbus.ReadHoldingRegisterAsync(0x1968 + i);
-                    HotRunnerList[i].FixedOutput = fixedOut;
-
-                    // 定时时间 (H19B0~H19B7)
-                    ushort soakTime = await _modbus.ReadHoldingRegisterAsync(0x19B0 + i);
-                    HotRunnerList[i].SoakTime = soakTime;
-
-                    // SV (H1008~H100F)
-                    ushort svHigh = await _modbus.ReadHoldingRegisterAsync(0x1008 + i);
-                    ushort svLow = await _modbus.ReadHoldingRegisterAsync(0x1009 + i);
-                    HotRunnerList[i].SV = Math.Round(ParseFloat(svHigh, svLow, 0.1), 1);
-
-                    // 斜率 (H1970~H1977)
-                    ushort slope = await _modbus.ReadHoldingRegisterAsync(0x1970 + i);
-                    HotRunnerList[i].Slope = slope;
-                }
-                Debug.WriteLine($"All HotRunnerList {HotRunnerList}");
-                step11Start.Stop();
-                Debug.WriteLine($"[步骤11] 读取热流道参数耗时: {step11Start.ElapsedMilliseconds}ms");
-
-                // ===== 12. 读取通讯参数 =====
-                var step12Start = Stopwatch.StartNew();
-                var commParams = await _modbus.ReadCommParamsAsync();
-                UpdateCommParamsUI(commParams);
-                step12Start.Stop();
-                Debug.WriteLine($"[步骤12] 读取通讯参数耗时: {step12Start.ElapsedMilliseconds}ms");
-
-                // ===== 13. 更新 LED 状态 =====
-                var step13Start = Stopwatch.StartNew();
-                var leds = await _modbus.ReadAllLEDStatusAsync();
-                for(int i = 0; i < 8; i++)
-                {
-                    ushort led = leds[i];
-                    // LED 状态位: b0=无报警, b1=Alarm, b2=℃, b3=°F, b4=Alarm1, b5=OUT2, b6=OUT1, b7=AT
-                    bool hasAlarm = (led & 0x02) != 0;
-                    bool atActive = (led & 0x80) != 0;
-
-                    if(hasAlarm)
-                    {
-                        ledERR.Fill = Brushes.Red;
-                    }
-                    else
-                    {
-                        ledERR.Fill = Brushes.Gray;
-                    }
-
-                    if(atActive)
-                    {
-                        PIDList[i].ATEnabled = true;
-                    }
-                }
-                Debug.WriteLine($"All PIDList {PIDList}");
-                step13Start.Stop();
-                Debug.WriteLine($"[步骤13] 更新LED状态耗时: {step13Start.ElapsedMilliseconds}ms");
-
-                // ===== 14. 更新状态指示 =====
-                var step14Start = Stopwatch.StartNew();
-
-                // 检查错误码
-                var (hasError, errorCodes) = await _modbus.CheckErrorsAsync();
-                if(hasError)
-                {
-                    ledERR.Fill = Brushes.Red;
-                    for(int i = 0; i < errorCodes.Length; i++)
-                    {
-                        if(errorCodes[i] >= 0x8001 && errorCodes[i] <= 0x8003)
-                        {
-                            string errMsg = errorCodes[i] switch
-                            {
-                                0x8001 => "EEPROM写入失败",
-                                0x8002 => $"CH{i + 1} 传感器未连接",
-                                0x8003 => "INB群组未连接",
-                                _ => $"未知错误(0x{errorCodes[i]:X4})"
-                            };
-                            TempCards[i].Status = $"❌ {errMsg}";
-                        }
-                    }
-                }
-                else
-                {
-                    ledERR.Fill = Brushes.Gray;
-                }
-
-                // ===== 14. 更新状态指示 =====
-                ledRUN.Fill = Brushes.LimeGreen;
-                ledCOM.Fill = Brushes.Yellow; // 闪烁效果
-
-                // 更新卡片状态
-                for(int i = 0; i < 8; i++)
-                {
-                    double pv = TempCards[i].PV;
-                    double sv = TempCards[i].SV;
-
-                    if(Math.Abs(pv - sv) < 2)
-                    {
-                        TempCards[i].Status = "✔ 稳定";
-                    }
-                    else if(pv < sv)
-                    {
-                        TempCards[i].Status = "↑ 加热中";
-                    }
-                    else
-                    {
-                        TempCards[i].Status = "↓ 冷却中";
-                    }
-                }
-
-                _readCount++;
-                txtReadCount.Text = $"读取次数: {_readCount}";
-                txtLastUpdate.Text = $"最后更新: {DateTime.Now:HH:mm:ss}";
-
-                // 更新实时曲线图表
-                UpdateChart();
-                step14Start.Stop();
-                Debug.WriteLine($"[步骤14] 更新状态指示耗时: {step14Start.ElapsedMilliseconds}ms");
-            }
-            catch(Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Poll] 轮询异常: {ex.Message}");
-                ledCOM.Fill = Brushes.Red;
-                txtStatus.Text = $"通讯异常: {ex.Message}";
-                txtStatus.Foreground = Brushes.Red;
-            }
-            ws.Stop();
-            Debug.WriteLine($"总耗时:{ws.ElapsedMilliseconds}ms");
+            Debug.WriteLine($"All AlarmList {AlarmList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤5] 读取警报设定耗时: {stepStart.ElapsedMilliseconds}ms");
         }
+
+        private async Task PollAllDataAsync()
+        { await DoWorkAsync(nameof(ApplyPollAllDataAsync), async () => await ApplyPollAllDataAsync(), "轮询数据中..."); }
 
         // ========== 定时轮询 ==========
         private async void PollCallback(object? state)
@@ -1604,6 +1407,225 @@ namespace DTE10T_WPF
             {
                 System.Diagnostics.Debug.WriteLine($"[PollCallback] 定时轮询异常: {ex.Message}");
             }
+        }
+
+        private async Task PollCommParamsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            var commParams = await _modbus!.ReadCommParamsAsync();
+            UpdateCommParamsUI(commParams);
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤12] 读取通讯参数耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollCTCurrentAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 4; i++)
+            {
+                ushort ctSHigh = await _modbus!.ReadHoldingRegisterAsync(0x19A0 + i);
+                ushort ctSLow = await _modbus!.ReadHoldingRegisterAsync(0x19A1 + i);
+                CTList[i].CTStatic = (int)Math.Round(ParseFloat(ctSHigh, ctSLow, 1), 0);
+
+                ushort ctDHigh = await _modbus!.ReadHoldingRegisterAsync(0x19A4 + i);
+                ushort ctDLow = await _modbus!.ReadHoldingRegisterAsync(0x19A5 + i);
+                CTList[i].CTDynamic = (int)Math.Round(ParseFloat(ctDHigh, ctDLow, 1), 0);
+
+                ushort ctAdj = await _modbus!.ReadHoldingRegisterAsync(0x19A8 + i);
+                CTList[i].CTAdjust = (short)ctAdj;
+            }
+            Debug.WriteLine($"All CTList {CTList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤9] 读取CT电流耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollEventFunctionsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort evtVal = await _modbus!.ReadHoldingRegisterAsync(0x1998 + i);
+                EventList[i].EventFunction = evtVal < EventFunctionNames.Length
+                    ? EventFunctionNames[evtVal] : $"未知({evtVal})";
+            }
+            Debug.WriteLine($"All EventList {EventList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤10] 读取EVENT功能耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollHotRunnerParamsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort limitTemp = await _modbus!.ReadHoldingRegisterAsync(0x1960 + i);
+                HotRunnerList[i].LimitTemp = limitTemp;
+
+                ushort fixedOut = await _modbus!.ReadHoldingRegisterAsync(0x1968 + i);
+                HotRunnerList[i].FixedOutput = fixedOut;
+
+                ushort soakTime = await _modbus!.ReadHoldingRegisterAsync(0x19B0 + i);
+                HotRunnerList[i].SoakTime = soakTime;
+
+                ushort svHigh = await _modbus!.ReadHoldingRegisterAsync(0x1008 + i);
+                ushort svLow = await _modbus!.ReadHoldingRegisterAsync(0x1009 + i);
+                HotRunnerList[i].SV = Math.Round(ParseFloat(svHigh, svLow, 0.1), 1);
+
+                ushort slope = await _modbus!.ReadHoldingRegisterAsync(0x1970 + i);
+                HotRunnerList[i].Slope = slope;
+            }
+            Debug.WriteLine($"All HotRunnerList {HotRunnerList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤11] 读取热流道参数耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollInputAdjustmentsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort offset = await _modbus!.ReadHoldingRegisterAsync(0x1020 + i);
+                InputAdjList[i].Offset = (short)offset;
+
+                ushort gain = await _modbus!.ReadHoldingRegisterAsync(0x19B8 + i);
+                InputAdjList[i].Gain = (short)gain;
+            }
+
+            ushort filterCount = await _modbus!.ReadHoldingRegisterAsync(0x10F7);
+            InputAdjList[0].FilterCount = filterCount;
+
+            ushort frHigh = await _modbus!.ReadHoldingRegisterAsync(0x10F9);
+            ushort frLow = await _modbus!.ReadHoldingRegisterAsync(0x10FA);
+            InputAdjList[0].FilterRange = Math.Round(ParseFloat(frHigh, frLow, 0.1), 1);
+
+            Debug.WriteLine($"All InputAdjList {InputAdjList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤8] 读取输入调整耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollOutputConfigAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort out1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10A8 + i);
+                OutputList[i].Out1Function = out1Ctrl < OutFunctionNames.Length
+                    ? OutFunctionNames[out1Ctrl] : $"未知({out1Ctrl})";
+
+                ushort out2Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10B0 + i);
+                OutputList[i].Out2Function = out2Ctrl < OutFunctionNames.Length
+                    ? OutFunctionNames[out2Ctrl] : $"未知({out2Ctrl})";
+
+                ushort outMax = await _modbus!.ReadHoldingRegisterAsync(0x1980 + i);
+                OutputList[i].OutMax = outMax;
+
+                ushort outMin = await _modbus!.ReadHoldingRegisterAsync(0x1988 + i);
+                OutputList[i].OutMin = outMin;
+            }
+            Debug.WriteLine($"All OutputList {OutputList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤6] 读取输出配置耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollPIDParametersAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort pbHigh = await _modbus!.ReadHoldingRegisterAsync(0x1028 + i);
+                ushort pbLow = await _modbus!.ReadHoldingRegisterAsync(0x1029 + i);
+                PIDList[i].Pb = Math.Round(ParseFloat(pbHigh, pbLow, 0.1), 1);
+
+                ushort tiHigh = await _modbus!.ReadHoldingRegisterAsync(0x1030 + i);
+                ushort tiLow = await _modbus!.ReadHoldingRegisterAsync(0x1031 + i);
+                PIDList[i].Ti = Math.Round(ParseFloat(tiHigh, tiLow, 1), 0);
+
+                ushort tdHigh = await _modbus!.ReadHoldingRegisterAsync(0x1038 + i);
+                ushort tdLow = await _modbus!.ReadHoldingRegisterAsync(0x1039 + i);
+                PIDList[i].Td = Math.Round(ParseFloat(tdHigh, tdLow, 1), 0);
+
+                ushort intHigh = await _modbus!.ReadHoldingRegisterAsync(0x1040 + i);
+                ushort intLow = await _modbus!.ReadHoldingRegisterAsync(0x1041 + i);
+                PIDList[i].Integral = Math.Round(ParseFloat(intHigh, intLow, 0.1), 1);
+
+                ushort o1High = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
+                ushort o1Low = await _modbus!.ReadHoldingRegisterAsync(0x1071 + i);
+                PIDList[i].Out1 = Math.Round(ParseFloat(o1High, o1Low, 0.1), 1);
+
+                ushort o2High = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
+                ushort o2Low = await _modbus!.ReadHoldingRegisterAsync(0x1079 + i);
+                PIDList[i].Out2 = Math.Round(ParseFloat(o2High, o2Low, 0.1), 1);
+
+                ushort ctrlMode = await _modbus!.ReadHoldingRegisterAsync(0x10B8 + i);
+                PIDList[i].ControlMode = ctrlMode < ControlModeNames.Length
+                    ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
+
+                ushort atStatus = await _modbus!.ReadHoldingRegisterAsync(0x10E0 + i);
+                PIDList[i].ATEnabled = atStatus == 1;
+            }
+            Debug.WriteLine($"All PIDList {PIDList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤4] 读取PID参数耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        // ===== 数据轮询方法 =====
+
+        private async Task PollPVValuesAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            var pvs = await _modbus!.ReadAllPVAsync();
+            Debug.WriteLine($"All PVS {string.Join(",", pvs)}");
+            for(int i = 0; i < 8 && i < TempCards.Count; i++)
+            {
+                TempCards[i].PV = Math.Round(pvs[i], 1);
+                PVSVList[i].PV = Math.Round(pvs[i], 1);
+            }
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤1] 读取PV值耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollSensorTypesAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort sensorVal = await _modbus!.ReadHoldingRegisterAsync(0x10A0 + i);
+                string sensorName = sensorVal < SensorTypeNames.Length
+                    ? SensorTypeNames[sensorVal]
+                    : $"未知({sensorVal})";
+                TempCards[i].InputType = sensorName;
+                PVSVList[i].InputType = sensorName;
+                Debug.WriteLine($"All cards {sensorName}");
+            }
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤3] 读取传感器类型耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollSlopeSettingsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort slopeVal = await _modbus!.ReadHoldingRegisterAsync(0x1970 + i);
+                SlopeList[i].Slope = slopeVal;
+            }
+            Debug.WriteLine($"All SlopeList {SlopeList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤7] 读取斜率设定耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task PollSVValuesAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            var svs = await _modbus!.ReadAllSVAsync();
+            Debug.WriteLine($"All SV {string.Join(",", svs)}");
+            for(int i = 0; i < 8 && i < TempCards.Count; i++)
+            {
+                TempCards[i].SV = Math.Round(svs[i], 1);
+                PVSVList[i].SV = Math.Round(svs[i], 1);
+            }
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤2] 读取SV值耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private void SaveConfig()
@@ -1773,6 +1795,94 @@ namespace DTE10T_WPF
             }
         }
 
+        private async Task UpdateLEDStatusAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            var leds = await _modbus!.ReadAllLEDStatusAsync();
+            for(int i = 0; i < 8; i++)
+            {
+                ushort led = leds[i];
+                bool hasAlarm = (led & 0x02) != 0;
+                bool atActive = (led & 0x80) != 0;
+
+                if(hasAlarm)
+                {
+                    ledERR.Fill = Brushes.Red;
+                }
+                else
+                {
+                    ledERR.Fill = Brushes.Gray;
+                }
+
+                if(atActive)
+                {
+                    PIDList[i].ATEnabled = true;
+                }
+            }
+            Debug.WriteLine($"All PIDList {PIDList}");
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤13] 更新LED状态耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private async Task UpdateStatusIndicatorsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+
+            var (hasError, errorCodes) = await _modbus!.CheckErrorsAsync();
+            if(hasError)
+            {
+                ledERR.Fill = Brushes.Red;
+                for(int i = 0; i < errorCodes.Length; i++)
+                {
+                    if(errorCodes[i] >= 0x8001 && errorCodes[i] <= 0x8003)
+                    {
+                        string errMsg = errorCodes[i] switch
+                        {
+                            0x8001 => "EEPROM写入失败",
+                            0x8002 => $"CH{i + 1} 传感器未连接",
+                            0x8003 => "INB群组未连接",
+                            _ => $"未知错误(0x{errorCodes[i]:X4})"
+                        };
+                        TempCards[i].Status = $"❌ {errMsg}";
+                    }
+                }
+            }
+            else
+            {
+                ledERR.Fill = Brushes.Gray;
+            }
+
+            ledRUN.Fill = Brushes.LimeGreen;
+            ledCOM.Fill = Brushes.Yellow;
+
+            for(int i = 0; i < 8; i++)
+            {
+                double pv = TempCards[i].PV;
+                double sv = TempCards[i].SV;
+
+                if(Math.Abs(pv - sv) < 2)
+                {
+                    TempCards[i].Status = "✔ 稳定";
+                }
+                else if(pv < sv)
+                {
+                    TempCards[i].Status = "↑ 加热中";
+                }
+                else
+                {
+                    TempCards[i].Status = "↓ 冷却中";
+                }
+            }
+
+            _readCount++;
+            txtReadCount.Text = $"读取次数: {_readCount}";
+            txtLastUpdate.Text = $"最后更新: {DateTime.Now:HH:mm:ss}";
+
+            UpdateChart();
+            stepStart.Stop();
+            Debug.WriteLine($"[步骤14] 更新状态指示耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
         // ========== 窗口关闭 ==========
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
@@ -1791,6 +1901,25 @@ namespace DTE10T_WPF
                 _modbus = null;
             }
             base.OnClosing(e);
+        }
+
+        public async Task DoWorkAsync(string key, Func<Task> action, string message)
+        {
+            var sem = _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+
+            if(!await sem.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                await action();
+            }
+            finally
+            {
+                sem.Release();
+            }
         }
 
         public ObservableCollection<AlarmModel> AlarmList { get; } = new();

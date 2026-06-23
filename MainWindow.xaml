@@ -17,8 +17,8 @@
             <ColumnDefinition Width="959*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="60" />
+            <RowDefinition Height="40" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -26,9 +26,8 @@
         <!--  顶部工具栏  -->
         <Border
             Grid.Row="0"
-            Grid.RowSpan="2"
             Grid.ColumnSpan="2"
-            Margin="0,0,0,29"
+            Margin="0,0,0,0"
             Padding="12,8"
             Background="#1B5E20">
             <Grid>
@@ -160,9 +159,8 @@
         <!--  状态指示灯栏  -->
         <Border
             Grid.Row="1"
-            Grid.RowSpan="2"
             Grid.ColumnSpan="2"
-            Margin="0,0,0,790"
+            Margin="0,0,0,0"
             Padding="12,0"
             Background="#E8F5E9"
             BorderBrush="#A5D6A7"
@@ -434,6 +432,12 @@
                                         Margin="4"
                                         Click="BtnPauseChart_Click"
                                         Content="暂停" />
+                                    <Button
+                                        x:Name="btnSaveImage"
+                                        Width="100"
+                                        Margin="4"
+                                        Click="BtnSaveImage_Click"
+                                        Content="保存图像" />
                                 </StackPanel>
                                 <oxy:PlotView
                                     x:Name="pvTemperature"
