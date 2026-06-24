@@ -1,3 +1,4 @@
+using DTE10T_WPF.Config;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -398,36 +399,6 @@ namespace DTE10T_WPF
                 btnConnect.IsEnabled = true;
                 ledCOM.Fill = Brushes.Red;
                 System.Diagnostics.Debug.WriteLine($"[Connect] 连接异常: {ex.Message}");
-            }
-        }
-
-        ///<summary>
-        /// 获取连接失败的详细错误信息</summary>
-        private string GetConnectionErrorMessage(Exception ex)
-        {
-            if(ex is System.IO.IOException)
-            {
-                return "串口无法打开，请检查端口是否被占用或不存在";
-            }
-            else if(ex is UnauthorizedAccessException)
-            {
-                return "权限不足，无法访问串口";
-            }
-            else if(ex is ArgumentOutOfRangeException)
-            {
-                return "串口参数无效，请检查波特率等设置";
-            }
-            else if(ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
-            {
-                return "连接超时，请检查设备是否在线或通讯参数是否正确";
-            }
-            else if(ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-            {
-                return "串口不存在，请检查COM端口设置";
-            }
-            else
-            {
-                return ex.Message;
             }
         }
 
@@ -1261,6 +1232,36 @@ namespace DTE10T_WPF
             return -1;
         }
 
+        ///<summary>
+        /// 获取连接失败的详细错误信息</summary>
+        private string GetConnectionErrorMessage(Exception ex)
+        {
+            if(ex is System.IO.IOException)
+            {
+                return "串口无法打开，请检查端口是否被占用或不存在";
+            }
+            else if(ex is UnauthorizedAccessException)
+            {
+                return "权限不足，无法访问串口";
+            }
+            else if(ex is ArgumentOutOfRangeException)
+            {
+                return "串口参数无效，请检查波特率等设置";
+            }
+            else if(ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+            {
+                return "连接超时，请检查设备是否在线或通讯参数是否正确";
+            }
+            else if(ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return "串口不存在，请检查COM端口设置";
+            }
+            else
+            {
+                return ex.Message;
+            }
+        }
+
         // ========== 初始化所有 DataGrid 数据 ==========
         private void InitAllGrids()
         {
@@ -1751,29 +1752,23 @@ namespace DTE10T_WPF
             var stepStart = Stopwatch.StartNew();
             for(int i = 0; i < 8; i++)
             {
-                ushort pbHigh = await _modbus!.ReadHoldingRegisterAsync(0x1028 + i);
-                ushort pbLow = await _modbus!.ReadHoldingRegisterAsync(0x1029 + i);
-                PIDList[i].Pb = Math.Round(ParseFloat(pbHigh, pbLow, 0.1), 1);
+                ushort pbValue = await _modbus!.ReadHoldingRegisterAsync(0x1028 + i);
+                PIDList[i].Pb = Math.Round(pbValue * 0.1, 1);
 
-                ushort tiHigh = await _modbus!.ReadHoldingRegisterAsync(0x1030 + i);
-                ushort tiLow = await _modbus!.ReadHoldingRegisterAsync(0x1031 + i);
-                PIDList[i].Ti = Math.Round(ParseFloat(tiHigh, tiLow, 1), 0);
+                ushort tiValue = await _modbus!.ReadHoldingRegisterAsync(0x1030 + i);
+                PIDList[i].Ti = Math.Round(tiValue * 0.0, 0);
 
-                ushort tdHigh = await _modbus!.ReadHoldingRegisterAsync(0x1038 + i);
-                ushort tdLow = await _modbus!.ReadHoldingRegisterAsync(0x1039 + i);
-                PIDList[i].Td = Math.Round(ParseFloat(tdHigh, tdLow, 1), 0);
+                ushort tdValue = await _modbus!.ReadHoldingRegisterAsync(0x1038 + i);
+                PIDList[i].Td = Math.Round(tdValue * 0.0, 0);
 
-                ushort intHigh = await _modbus!.ReadHoldingRegisterAsync(0x1040 + i);
-                ushort intLow = await _modbus!.ReadHoldingRegisterAsync(0x1041 + i);
-                PIDList[i].Integral = Math.Round(ParseFloat(intHigh, intLow, 0.1), 1);
+                ushort intValue = await _modbus!.ReadHoldingRegisterAsync(0x1040 + i);
+                PIDList[i].Integral = Math.Round(intValue * 0.1, 1);
 
-                ushort o1High = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
-                ushort o1Low = await _modbus!.ReadHoldingRegisterAsync(0x1071 + i);
-                PIDList[i].Out1 = Math.Round(ParseFloat(o1High, o1Low, 0.1), 1);
+                ushort o1Value = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
+                PIDList[i].Out1 = Math.Round(o1Value * 0.1, 1);
 
-                ushort o2High = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
-                ushort o2Low = await _modbus!.ReadHoldingRegisterAsync(0x1079 + i);
-                PIDList[i].Out2 = Math.Round(ParseFloat(o2High, o2Low, 0.1), 1);
+                ushort o2Value = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
+                PIDList[i].Out2 = Math.Round(o2Value * 0.1, 1);
 
                 ushort ctrlMode = await _modbus!.ReadHoldingRegisterAsync(0x10B8 + i);
                 PIDList[i].ControlMode = ctrlMode < ControlModeNames.Length
@@ -1798,13 +1793,11 @@ namespace DTE10T_WPF
                 PVSVList[i].PV = Math.Round(pvs[i], 1);
 
                 // 读取输出1量和输出2量
-                ushort o1High = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
-                ushort o1Low = await _modbus!.ReadHoldingRegisterAsync(0x1071 + i);
-                PVSVList[i].Out1 = Math.Round(ParseFloat(o1High, o1Low, 0.1), 1);
+                ushort o1Value = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
+                PVSVList[i].Out1 = Math.Round(o1Value * 0.1, 1);
 
-                ushort o2High = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
-                ushort o2Low = await _modbus!.ReadHoldingRegisterAsync(0x1079 + i);
-                PVSVList[i].Out2 = Math.Round(ParseFloat(o2High, o2Low, 0.1), 1);
+                ushort o2Value = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
+                PVSVList[i].Out2 = Math.Round(o2Value * 0.1, 1);
             }
             stepStart.Stop();
             Debug.WriteLine($"[步骤1] 读取PV值耗时: {stepStart.ElapsedMilliseconds}ms");
