@@ -1,4 +1,5 @@
 using DTE10T_WPF.Config;
+using DTE10T_WPF.Services;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -23,7 +24,7 @@ namespace DTE10T_WPF
 {
     public partial class MainWindow : Window
     {
-        private const int MaxDataPoints = 100;
+        private const int MaxDataPoints = int.MaxValue;
 
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
@@ -88,7 +89,7 @@ namespace DTE10T_WPF
         // ========== 配置管理 ==========
         private bool _isConfigSaving = false;
         private bool _isConnected = false;
-        private bool _isRecording = false;
+        private bool _isRecording = true;
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
@@ -112,6 +113,14 @@ namespace DTE10T_WPF
 
             LoadConfigIfExists();
             SetupConfigChangeListeners();
+
+            ConnectAsync().ConfigureAwait(false);
+            Task.Run(() => {
+                Task.Delay(1000).Wait();
+                Application.Current.Dispatcher.Invoke(() => {
+                    StartRecord();
+                });
+            });
         }
 
         private async Task<bool> ApplyPollAllDataAsync()
@@ -327,80 +336,7 @@ namespace DTE10T_WPF
         private void BtnClearChart_Click(object sender, RoutedEventArgs e) { ClearChart(); }
 
         // ========== 连接 / 断开 ==========
-        private async void BtnConnect_Click(object sender, RoutedEventArgs e)
-        {
-            btnConnect.IsEnabled = false;
-            txtStatus.Text = "正在连接...";
-            txtStatus.Foreground = Brushes.Orange;
-            ledCOM.Fill = Brushes.Yellow;
-
-            try
-            {
-                // 从 UI 获取连接参数
-                string port = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1";
-                int baudRate = int.Parse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"));
-                int slaveId = int.Parse(txtStationCode.Text);
-
-                // 获取校验位、停止位和协议类型
-                string parity = "Even";  // 默认
-                string stopBits = "1";
-                string protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU";
-
-                _modbus = new ModbusService(
-                    slaveId: slaveId,
-                    comPort: port,
-                    baudRate: baudRate,
-                    parity: parity,
-                    dataBits: 8,
-                    stopBits: stopBits,
-                    protocol: protocol
-                );
-
-                bool success = await _modbus.ConnectAsync();
-
-                if(success)
-                {
-                    _isConnected = true;
-                    txtStatus.Text = "已连接";
-                    txtStatus.Foreground = Brushes.Green;
-                    btnConnect.IsEnabled = false;
-                    btnDisconnect.IsEnabled = true;
-                    btnRefresh.IsEnabled = true;
-                    txtConnStatus.Text = "● 已连接";
-                    txtConnStatus.Foreground = Brushes.Green;
-
-                    string baud = cmbBaudRate.Text;
-                    txtDeviceInfo.Text = $"| 基恩士20站.温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
-
-                    ledPWR.Fill = Brushes.LimeGreen;
-                    ledCOM.Fill = Brushes.Green;
-
-                    // 连接成功后读取一次全部数据
-                    await PollAllDataAsync();
-
-                    // 启动定时轮询 (每 1 秒)
-                    var ms = 1000;
-                    _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
-                }
-                else
-                {
-                    txtStatus.Text = "连接失败: 无法建立连接，请检查串口设置";
-                    txtStatus.Foreground = Brushes.Red;
-                    btnConnect.IsEnabled = true;
-                    ledCOM.Fill = Brushes.Red;
-                    System.Diagnostics.Debug.WriteLine("[Connect] 无法连接到温控器，请检查: COM端口、串口占用、波特率/站号");
-                }
-            }
-            catch(Exception ex)
-            {
-                string errorMessage = GetConnectionErrorMessage(ex);
-                txtStatus.Text = $"连接失败: {errorMessage}";
-                txtStatus.Foreground = Brushes.Red;
-                btnConnect.IsEnabled = true;
-                ledCOM.Fill = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Connect] 连接异常: {ex.Message}");
-            }
-        }
+        private async void BtnConnect_Click(object sender, RoutedEventArgs e) { await ConnectAsync(); }
 
         private void BtnDisconnect_Click(object sender, RoutedEventArgs e)
         {
@@ -516,34 +452,9 @@ namespace DTE10T_WPF
             chkCH5.IsChecked = chkCH6.IsChecked = chkCH7.IsChecked = chkCH8.IsChecked = false;
         }
 
-        private void BtnStartRecord_Click(object sender, RoutedEventArgs e)
-        {
-            _isRecording = true;
-            _recordStartTime = DateTime.Now;
-            _recordedData.Clear();
+        private void BtnStartRecord_Click(object sender, RoutedEventArgs e) { StartRecord(); }
 
-            btnStartRecord.IsEnabled = false;
-            btnStopRecord.IsEnabled = true;
-            txtStatus.Text = "📝 正在记录数据...";
-            txtStatus.Foreground = Brushes.Blue;
-        }
-
-        private void BtnStopRecord_Click(object sender, RoutedEventArgs e)
-        {
-            _isRecording = false;
-            btnStartRecord.IsEnabled = true;
-            btnStopRecord.IsEnabled = false;
-
-            if(_recordedData.Count > 0)
-            {
-                ExportToCsv();
-            }
-            else
-            {
-                txtStatus.Text = "没有记录的数据可导出";
-                txtStatus.Foreground = Brushes.Gray;
-            }
-        }
+        private void BtnStopRecord_Click(object sender, RoutedEventArgs e) { StopRecord(); }
 
         private void ChkChannel_CheckedChanged(object sender, RoutedEventArgs e) { UpdateChart(); }
 
@@ -612,6 +523,81 @@ namespace DTE10T_WPF
             if(_temperaturePlotModel != null)
             {
                 _temperaturePlotModel.InvalidatePlot(true);
+            }
+        }
+
+        private async Task ConnectAsync()
+        {
+            btnConnect.IsEnabled = false;
+            txtStatus.Text = "正在连接...";
+            txtStatus.Foreground = Brushes.Orange;
+            ledCOM.Fill = Brushes.Yellow;
+
+            try
+            {
+                // 从 UI 获取连接参数
+                string port = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1";
+                int baudRate = int.Parse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"));
+                int slaveId = int.Parse(txtStationCode.Text);
+
+                // 获取校验位、停止位和协议类型
+                string parity = "Even";  // 默认
+                string stopBits = "1";
+                string protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU";
+
+                _modbus = new ModbusService(
+                    slaveId: slaveId,
+                    comPort: port,
+                    baudRate: baudRate,
+                    parity: parity,
+                    dataBits: 8,
+                    stopBits: stopBits,
+                    protocol: protocol
+                );
+
+                bool success = await _modbus.ConnectAsync();
+
+                if(success)
+                {
+                    _isConnected = true;
+                    txtStatus.Text = "已连接";
+                    txtStatus.Foreground = Brushes.Green;
+                    btnConnect.IsEnabled = false;
+                    btnDisconnect.IsEnabled = true;
+                    btnRefresh.IsEnabled = true;
+                    txtConnStatus.Text = "● 已连接";
+                    txtConnStatus.Foreground = Brushes.Green;
+
+                    string baud = cmbBaudRate.Text;
+                    txtDeviceInfo.Text = $"| 基恩士20站.温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
+
+                    ledPWR.Fill = Brushes.LimeGreen;
+                    ledCOM.Fill = Brushes.Green;
+
+                    // 连接成功后读取一次全部数据
+                    await PollAllDataAsync();
+
+                    // 启动定时轮询 (每 1 秒)
+                    var ms = 500;
+                    _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
+                }
+                else
+                {
+                    txtStatus.Text = "连接失败: 无法建立连接，请检查串口设置";
+                    txtStatus.Foreground = Brushes.Red;
+                    btnConnect.IsEnabled = true;
+                    ledCOM.Fill = Brushes.Red;
+                    System.Diagnostics.Debug.WriteLine("[Connect] 无法连接到温控器，请检查: COM端口、串口占用、波特率/站号");
+                }
+            }
+            catch(Exception ex)
+            {
+                string errorMessage = GetConnectionErrorMessage(ex);
+                txtStatus.Text = $"连接失败: {errorMessage}";
+                txtStatus.Foreground = Brushes.Red;
+                btnConnect.IsEnabled = true;
+                ledCOM.Fill = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Connect] 连接异常: {ex.Message}");
             }
         }
 
@@ -992,7 +978,7 @@ namespace DTE10T_WPF
                 return;
             }
 
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? (e.Column as DataGridCheckBoxColumn)?.Header?.ToString() ?? string.Empty;
 
             try
             {
@@ -1016,14 +1002,15 @@ namespace DTE10T_WPF
                         await _modbus.WriteTdAsync(ch, model.Td);
                         break;
                     case "AT自整定":
-                        if(model.ATEnabled)
-                        {
-                            await _modbus.StartATAsync(ch);
-                        }
-                        else
-                        {
-                            await _modbus.StopATAsync(ch);
-                        }
+                        await _modbus.StartATAsync(ch);
+                        //if (model.ATEnabled)
+                        //{
+                        //    await _modbus.StartATAsync(ch);
+                        //}
+                        //else
+                        //{
+                        //    await _modbus.StopATAsync(ch);
+                        //}
 
                         break;
                 }
@@ -1090,6 +1077,76 @@ namespace DTE10T_WPF
                 txtStatus.Foreground = Brushes.Red;
                 System.Diagnostics.Debug.WriteLine($"[Write] 写入失败: {ex.Message}");
             }
+        }
+
+        ///<summary>
+        /// 设置全部 SV 值</summary>
+        private void BtnSetAllSV_Click(object sender, RoutedEventArgs e)
+        {
+            if(double.TryParse(txtSetAllSV.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.SV = value;
+                }
+                txtStatus.Text = "已设置全部 SV 值";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部量程上限</summary>
+        private void BtnSetAllRangeHigh_Click(object sender, RoutedEventArgs e)
+        {
+            if(double.TryParse(txtSetAllRangeHigh.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.RangeHigh = value;
+                }
+                txtStatus.Text = "已设置全部量程上限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部量程下限</summary>
+        private void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
+        {
+            if(double.TryParse(txtSetAllRangeLow.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.RangeLow = value;
+                }
+                txtStatus.Text = "已设置全部量程下限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部通道使能</summary>
+        private void BtnSetAllEnabled_Click(object sender, RoutedEventArgs e)
+        {
+            bool enabled = chkSetAllEnabled.IsChecked ?? false;
+            foreach(var item in PVSVList)
+            {
+                item.IsEnabled = enabled;
+            }
+            txtStatus.Text = enabled ? "已启用全部通道" : "已禁用全部通道";
+            txtStatus.Foreground = Brushes.Green;
         }
 
         ///<summary>
@@ -1397,8 +1454,10 @@ namespace DTE10T_WPF
             {
                 Position = AxisPosition.Left,
                 Title = "温度 (℃)",
-                Minimum = -50,
-                Maximum = 500,
+                Minimum = -200,
+                Maximum = 1300,
+                AbsoluteMinimum = -200,   // 禁止缩放到比这更小
+                AbsoluteMaximum = 1300,  // 禁止缩放到比这更大
                 MajorGridlineStyle = LineStyle.Solid,
                 MinorGridlineStyle = LineStyle.Dot,
                 MajorGridlineColor = OxyColors.LightGray,
@@ -1610,7 +1669,7 @@ namespace DTE10T_WPF
                 AlarmList[i].AlarmDelay = delay;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤5] 读取警报设定耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤5] 读取警报设定耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollAllDataAsync()
@@ -1640,7 +1699,7 @@ namespace DTE10T_WPF
             var commParams = await _modbus!.ReadCommParamsAsync();
             UpdateCommParamsUI(commParams);
             stepStart.Stop();
-            Debug.WriteLine($"[步骤12] 读取通讯参数耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤12] 读取通讯参数耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollCTCurrentAsync()
@@ -1660,7 +1719,7 @@ namespace DTE10T_WPF
                 CTList[i].CTAdjust = (short)ctAdj;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤9] 读取CT电流耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤9] 读取CT电流耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollEventFunctionsAsync()
@@ -1673,7 +1732,7 @@ namespace DTE10T_WPF
                     ? EventFunctionNames[evtVal] : $"未知({evtVal})";
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤10] 读取EVENT功能耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤10] 读取EVENT功能耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollHotRunnerParamsAsync()
@@ -1698,7 +1757,7 @@ namespace DTE10T_WPF
                 HotRunnerList[i].Slope = slope;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤11] 读取热流道参数耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤11] 读取热流道参数耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollInputAdjustmentsAsync()
@@ -1721,7 +1780,7 @@ namespace DTE10T_WPF
             InputAdjList[0].FilterRange = Math.Round(ParseFloat(frHigh, frLow, 0.1), 1);
 
             stepStart.Stop();
-            Debug.WriteLine($"[步骤8] 读取输入调整耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤8] 读取输入调整耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollOutputConfigAsync()
@@ -1744,7 +1803,7 @@ namespace DTE10T_WPF
                 OutputList[i].OutMin = outMin;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤6] 读取输出配置耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤6] 读取输出配置耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollPIDParametersAsync()
@@ -1778,7 +1837,7 @@ namespace DTE10T_WPF
                 PIDList[i].ATEnabled = atStatus == 1;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤4] 读取PID参数耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤4] 读取PID参数耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         // ===== 数据轮询方法 =====
@@ -1800,7 +1859,7 @@ namespace DTE10T_WPF
                 PVSVList[i].Out2 = Math.Round(o2Value * 0.1, 1);
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤1] 读取PV值耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤1] 读取PV值耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollSensorTypesAsync()
@@ -1816,7 +1875,7 @@ namespace DTE10T_WPF
                 PVSVList[i].InputType = sensorName;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤3] 读取传感器类型耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤3] 读取传感器类型耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollSlopeSettingsAsync()
@@ -1828,7 +1887,7 @@ namespace DTE10T_WPF
                 SlopeList[i].Slope = slopeVal;
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤7] 读取斜率设定耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤7] 读取斜率设定耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task PollSVValuesAsync()
@@ -1841,7 +1900,7 @@ namespace DTE10T_WPF
                 PVSVList[i].SV = Math.Round(svs[i], 1);
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤2] 读取SV值耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤2] 读取SV值耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private void RecordDataPoint()
@@ -1902,7 +1961,6 @@ namespace DTE10T_WPF
                 };
 
                 ConfigManager.SaveConfig(config);
-                System.Diagnostics.Debug.WriteLine("[Config] 配置保存成功");
             }
             catch(Exception ex)
             {
@@ -1943,6 +2001,35 @@ namespace DTE10T_WPF
 
             // 为每个数据模型的 PropertyChanged 事件添加监听
             AttachPropertyChangedListeners();
+        }
+
+        private void StartRecord()
+        {
+            _isRecording = true;
+            _recordStartTime = DateTime.Now;
+            _recordedData.Clear();
+
+            btnStartRecord.IsEnabled = false;
+            btnStopRecord.IsEnabled = true;
+            txtStatus.Text = "📝 正在记录数据...";
+            txtStatus.Foreground = Brushes.Blue;
+        }
+
+        private void StopRecord()
+        {
+            _isRecording = false;
+            btnStartRecord.IsEnabled = true;
+            btnStopRecord.IsEnabled = false;
+
+            if(_recordedData.Count > 0)
+            {
+                ExportToCsv();
+            }
+            else
+            {
+                txtStatus.Text = "没有记录的数据可导出";
+                txtStatus.Foreground = Brushes.Gray;
+            }
         }
 
         private void ToggleChartPause()
@@ -2031,7 +2118,6 @@ namespace DTE10T_WPF
             }
 
             _temperaturePlotModel.InvalidatePlot(true);
-            Debug.WriteLine($"更新图表");
         }
 
         private void UpdateCommParamsUI(Dictionary<string, ushort> commParams)
@@ -2086,7 +2172,7 @@ namespace DTE10T_WPF
                 }
             }
             stepStart.Stop();
-            Debug.WriteLine($"[步骤13] 更新LED状态耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤13] 更新LED状态耗时: {stepStart.ElapsedMilliseconds}ms");
         }
 
         private async Task UpdateStatusIndicatorsAsync()
@@ -2145,7 +2231,13 @@ namespace DTE10T_WPF
 
             UpdateChart();
             stepStart.Stop();
-            Debug.WriteLine($"[步骤14] 更新状态指示耗时: {stepStart.ElapsedMilliseconds}ms");
+            // Debug.WriteLine($"[步骤14] 更新状态指示耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            SaveConfig();
+            ExportToCsv();
         }
 
         // ========== 窗口关闭 ==========
@@ -2217,27 +2309,5 @@ namespace DTE10T_WPF
         public ObservableCollection<TempCardModel> TempCards { get; } = new();
 
         public PlotModel? TemperaturePlotModel => _temperaturePlotModel;
-    }
-
-    public class RecordedDataPoint
-    {
-        public RecordedDataPoint(DateTime timestamp, double elapsedSeconds, double[] chValues, double[] out1Values, double[] out2Values)
-        {
-            Timestamp = timestamp;
-            ElapsedSeconds = elapsedSeconds;
-            CHValues = chValues;
-            Out1Values = out1Values;
-            Out2Values = out2Values;
-        }
-
-        public double[] CHValues { get; set; } = new double[8];
-
-        public double ElapsedSeconds { get; set; }
-
-        public double[] Out1Values { get; set; } = new double[8];
-
-        public double[] Out2Values { get; set; } = new double[8];
-
-        public DateTime Timestamp { get; set; }
     }
 }

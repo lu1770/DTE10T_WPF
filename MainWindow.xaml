@@ -9,6 +9,7 @@
     Height="900"
     MinWidth="1000"
     MinHeight="700"
+    Closing="Window_Closing"
     FontFamily="Microsoft YaHei"
     FontSize="12">
     <Grid>
@@ -287,28 +288,28 @@
                             Margin="8,0"
                             Checked="ChkChannel_CheckedChanged"
                             Content="CH5"
-                            IsChecked="False"
+                            IsChecked="True"
                             Unchecked="ChkChannel_CheckedChanged" />
                         <CheckBox
                             x:Name="chkCH6"
                             Margin="8,0"
                             Checked="ChkChannel_CheckedChanged"
                             Content="CH6"
-                            IsChecked="False"
+                            IsChecked="True"
                             Unchecked="ChkChannel_CheckedChanged" />
                         <CheckBox
                             x:Name="chkCH7"
                             Margin="8,0"
                             Checked="ChkChannel_CheckedChanged"
                             Content="CH7"
-                            IsChecked="False"
+                            IsChecked="True"
                             Unchecked="ChkChannel_CheckedChanged" />
                         <CheckBox
                             x:Name="chkCH8"
                             Margin="8,0"
                             Checked="ChkChannel_CheckedChanged"
                             Content="CH8"
-                            IsChecked="False"
+                            IsChecked="True"
                             Unchecked="ChkChannel_CheckedChanged" />
                         <Button
                             x:Name="btnSelAll"
@@ -342,14 +343,14 @@
                                 Margin="8,0,0,0"
                                 Checked="ChkShowOut1_CheckedChanged"
                                 Content="输出1"
-                                IsChecked="False"
+                                IsChecked="True"
                                 Unchecked="ChkShowOut1_CheckedChanged" />
                             <CheckBox
                                 x:Name="chkShowOut2"
                                 Margin="8,0,0,0"
                                 Checked="ChkShowOut2_CheckedChanged"
                                 Content="输出2"
-                                IsChecked="False"
+                                IsChecked="True"
                                 Unchecked="ChkShowOut2_CheckedChanged" />
                         </StackPanel>
                     </StackPanel>
@@ -456,17 +457,17 @@
                                         x:Name="btnStartRecord"
                                         Width="80"
                                         Margin="4"
+                                        Background="#4CAF50"
                                         Click="BtnStartRecord_Click"
                                         Content="开始记录"
-                                        Background="#4CAF50"
                                         Foreground="White" />
                                     <Button
                                         x:Name="btnStopRecord"
                                         Width="80"
                                         Margin="4"
+                                        Background="#F44336"
                                         Click="BtnStopRecord_Click"
                                         Content="结束记录"
-                                        Background="#F44336"
                                         Foreground="White"
                                         IsEnabled="False" />
                                 </StackPanel>
@@ -483,52 +484,114 @@
 
             <!--  Tab2: PV/SV 设定  -->
             <TabItem Header="📊 PV/SV 设定">
-                <DataGrid
-                    x:Name="dgPVSV"
-                    AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    CellEditEnding="DgPVSV_CellEditEnding"
-                    GridLinesVisibility="All"
-                    HeadersVisibility="Column"
-                    RowBackground="{StaticResource RowOddBrush}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn
-                            Width="60"
-                            Binding="{Binding Channel}"
-                            Header="通道"
-                            IsReadOnly="True" />
-                        <DataGridTextColumn
-                            Width="120"
-                            Binding="{Binding PV, StringFormat=F1}"
-                            Header="PV 当前值 (℃)"
-                            IsReadOnly="True" />
-                        <DataGridTextColumn
-                            Width="120"
-                            Binding="{Binding SV, StringFormat=F1}"
-                            Header="SV 设定值 (℃)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="120"
-                            Binding="{Binding InputType}"
-                            Header="输入类型"
-                            IsReadOnly="True" />
-                        <DataGridTextColumn
-                            Width="110"
-                            Binding="{Binding RangeHigh, StringFormat=F1}"
-                            Header="量程上限 (℃)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="110"
-                            Binding="{Binding RangeLow, StringFormat=F1}"
-                            Header="量程下限 (℃)"
-                            IsReadOnly="False" />
-                        <DataGridCheckBoxColumn
-                            Width="80"
-                            Binding="{Binding IsEnabled}"
-                            Header="通道使能" />
-                    </DataGrid.Columns>
-                </DataGrid>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel
+                        Grid.Row="0"
+                        Margin="8,4"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            FontWeight="Bold"
+                            Text="设置全部:" />
+                        <TextBox
+                            x:Name="txtSetAllSV"
+                            Width="100"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="SV 设定值" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllSV_Click"
+                            Content="SV全部" />
+                        <TextBox
+                            x:Name="txtSetAllRangeHigh"
+                            Width="90"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="量程上限" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllRangeHigh_Click"
+                            Content="上限全部" />
+                        <TextBox
+                            x:Name="txtSetAllRangeLow"
+                            Width="90"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="量程下限" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllRangeLow_Click"
+                            Content="下限全部" />
+                        <CheckBox
+                            x:Name="chkSetAllEnabled"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            Content="通道使能" />
+                        <Button
+                            Width="70"
+                            Click="BtnSetAllEnabled_Click"
+                            Content="使能全部" />
+                    </StackPanel>
+                    <DataGrid
+                        x:Name="dgPVSV"
+                        Grid.Row="1"
+                        AlternatingRowBackground="{StaticResource RowEvenBrush}"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CellEditEnding="DgPVSV_CellEditEnding"
+                        GridLinesVisibility="All"
+                        HeadersVisibility="Column"
+                        RowBackground="{StaticResource RowOddBrush}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="60"
+                                Binding="{Binding Channel}"
+                                Header="通道"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="120"
+                                Binding="{Binding PV, StringFormat=F1}"
+                                Header="PV 当前值 (℃)"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="120"
+                                Binding="{Binding SV, StringFormat=F1}"
+                                Header="SV 设定值 (℃)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="120"
+                                Binding="{Binding InputType}"
+                                Header="输入类型"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="110"
+                                Binding="{Binding RangeHigh, StringFormat=F1}"
+                                Header="量程上限 (℃)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="110"
+                                Binding="{Binding RangeLow, StringFormat=F1}"
+                                Header="量程下限 (℃)"
+                                IsReadOnly="False" />
+                            <DataGridCheckBoxColumn
+                                Width="80"
+                                Binding="{Binding IsEnabled}"
+                                Header="通道使能" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </TabItem>
 
             <!--  Tab3: PID 参数  -->

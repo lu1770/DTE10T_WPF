@@ -8,7 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DTE10T_WPF
+namespace DTE10T_WPF.Services
 {
     ///<summary>
     /// DTE10T Modbus RTU 通讯服务 - 基于 NModbus 真实实现
@@ -3292,6 +3292,7 @@ namespace DTE10T_WPF
                        try
                        {
                            _master!.WriteSingleRegister(_slaveId, (ushort)address, value);
+                           System.Diagnostics.Debug.WriteLine($"[Modbus] 写入成功 @{address:X4}: {value}");
                            return true;
                        }
                        catch(Exception ex)

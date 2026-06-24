@@ -7,6 +7,15 @@
     <AssemblyName>DTE10T_WPF</AssemblyName>
     <RootNamespace>DTE10T_WPF</RootNamespace>
     <UseWindowsForms>False</UseWindowsForms>
+
+    <!-- 编译性能优化配置 -->
+    <IncrementalBuild>true</IncrementalBuild>
+    <UseSharedCompilation>true</UseSharedCompilation>
+    <BuildInParallel>true</BuildInParallel>
+    <Optimize>true</Optimize>
+    <Deterministic>true</Deterministic>
+    <CacheCompilation>true</CacheCompilation>
+    <UseRazorIncrementalBuild>true</UseRazorIncrementalBuild>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NModbus" Version="3.0.83" />

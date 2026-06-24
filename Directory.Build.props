@@ -1,0 +1,38 @@
+<Project>
+  <PropertyGroup>
+    <!-- 增量编译优化 -->
+    <IncrementalBuild>true</IncrementalBuild>
+    <UseSharedCompilation>true</UseSharedCompilation>
+    <BuildInParallel>true</BuildInParallel>
+    
+    <!-- 优化编译输出 -->
+    <Optimize>true</Optimize>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
+    
+    <!-- 缓存配置 -->
+    <CacheCompilation>true</CacheCompilation>
+    <UseRazorIncrementalBuild>true</UseRazorIncrementalBuild>
+    
+    <!-- 禁用不必要的分析器 -->
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    
+    <!-- 优化调试模式 -->
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    
+    <!-- 减少文件复制 -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    
+    <!-- 并行构建 -->
+    <MaxCpuCount>0</MaxCpuCount>
+    <NodeReuse>true</NodeReuse>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+</Project>
