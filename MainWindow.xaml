@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="clr-namespace:DTE10T_WPF"
     xmlns:oxy="clr-namespace:OxyPlot.SkiaSharp.Wpf;assembly=OxyPlot.SkiaSharp.Wpf"
-    Title="基恩士20站 - 温控器1 - 台达 DTE10T 监控配置"
+    Title="温控器1 - 台达 DTE10T 监控配置"
     Width="1280"
     Height="900"
     MinWidth="1000"
@@ -52,7 +52,7 @@
                         VerticalAlignment="Center"
                         FontSize="13"
                         Foreground="#A5D6A7"
-                        Text=" | 基恩士20站.温控器1" />
+                        Text=" | 温控器1" />
                 </StackPanel>
                 <StackPanel
                     Grid.Column="2"
@@ -383,6 +383,7 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock
                                                     Grid.Row="0"
@@ -406,6 +407,13 @@
                                                     Text="{Binding SV, StringFormat='SV: {0:F1} ℃'}" />
                                                 <TextBlock
                                                     Grid.Row="3"
+                                                    Margin="0,4,0,0"
+                                                    HorizontalAlignment="Center"
+                                                    FontSize="12"
+                                                    Foreground="#E65100"
+                                                    Text="{Binding RateOfChange, StringFormat='加热速率: {0:F1} ℃/min'}" />
+                                                <TextBlock
+                                                    Grid.Row="4"
                                                     Margin="0,4,0,0"
                                                     HorizontalAlignment="Center"
                                                     FontSize="11"
@@ -1090,7 +1098,7 @@
                     Text="● 未连接" />
             </StatusBarItem>
             <StatusBarItem>
-                <TextBlock x:Name="txtDeviceInfo" Text="| 基恩士20站.温控器1 | SlaveID: 1 | COM1 | 9600bps" />
+                <TextBlock x:Name="txtDeviceInfo" Text="| 温控器1 | SlaveID: 1 | COM1 | 9600bps" />
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <TextBlock x:Name="txtReadCount" Text="读取次数: 0" />

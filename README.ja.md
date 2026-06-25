@@ -1,4 +1,4 @@
-# 基恩士20站.温度調節器1 — デルタ DTE10T WPF モニタリング・設定ツール
+# 温度調節器1 — デルタ DTE10T WPF モニタリング・設定ツール
 
 > 🌐 **多言語 / Languages / 多语言 / 다국어**
 > [日本語](README.ja.md) | [简体中文](README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [한국어](README.ko.md)

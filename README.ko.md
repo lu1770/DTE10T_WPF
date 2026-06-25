@@ -1,4 +1,4 @@
-# 基恩士20站.온도조절기1 — 델타 DTE10T WPF 모니터링 및 설정 도구
+# 온도조절기1 — 델타 DTE10T WPF 모니터링 및 설정 도구
 
 > 🌐 **다국어 / Languages / 多语言 / 多言語**
 > [한국어](README.ko.md) | [简体中文](README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [日本語](README.ja.md)

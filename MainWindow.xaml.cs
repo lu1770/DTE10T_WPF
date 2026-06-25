@@ -24,7 +24,9 @@ namespace DTE10T_WPF
 {
     public partial class MainWindow : Window
     {
+        private const int AutoSaveInterval = 100;
         private const int MaxDataPoints = int.MaxValue;
+        private const int RateCalculationSeconds = 10;
 
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
@@ -90,6 +92,9 @@ namespace DTE10T_WPF
         private bool _isConfigSaving = false;
         private bool _isConnected = false;
         private bool _isRecording = true;
+        private DateTime[] _lastPVTime = new DateTime[8];
+        // ========== 温度变化速率计算 ==========
+        private double[] _lastPVValues = new double[8];
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
@@ -101,6 +106,9 @@ namespace DTE10T_WPF
         private DateTime _recordStartTime;
         // ========== OxyPlot 图表相关 ==========
         private PlotModel? _temperaturePlotModel;
+        // ========== 临时CSV文件保存 ==========
+        private int _tempFileCounter = 0;
+        private string _tempFolder = string.Empty;
 
         public MainWindow()
         {
@@ -452,6 +460,76 @@ namespace DTE10T_WPF
             chkCH5.IsChecked = chkCH6.IsChecked = chkCH7.IsChecked = chkCH8.IsChecked = false;
         }
 
+        ///<summary>
+        /// 设置全部通道使能</summary>
+        private void BtnSetAllEnabled_Click(object sender, RoutedEventArgs e)
+        {
+            bool enabled = chkSetAllEnabled.IsChecked ?? false;
+            foreach(var item in PVSVList)
+            {
+                item.IsEnabled = enabled;
+            }
+            txtStatus.Text = enabled ? "已启用全部通道" : "已禁用全部通道";
+            txtStatus.Foreground = Brushes.Green;
+        }
+
+        ///<summary>
+        /// 设置全部量程上限</summary>
+        private void BtnSetAllRangeHigh_Click(object sender, RoutedEventArgs e)
+        {
+            if(double.TryParse(txtSetAllRangeHigh.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.RangeHigh = value;
+                }
+                txtStatus.Text = "已设置全部量程上限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部量程下限</summary>
+        private void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
+        {
+            if(double.TryParse(txtSetAllRangeLow.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.RangeLow = value;
+                }
+                txtStatus.Text = "已设置全部量程下限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部 SV 值</summary>
+        private void BtnSetAllSV_Click(object sender, RoutedEventArgs e)
+        {
+            if(double.TryParse(txtSetAllSV.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.SV = value;
+                }
+                txtStatus.Text = "已设置全部 SV 值";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void BtnStartRecord_Click(object sender, RoutedEventArgs e) { StartRecord(); }
 
         private void BtnStopRecord_Click(object sender, RoutedEventArgs e) { StopRecord(); }
@@ -569,7 +647,7 @@ namespace DTE10T_WPF
                     txtConnStatus.Foreground = Brushes.Green;
 
                     string baud = cmbBaudRate.Text;
-                    txtDeviceInfo.Text = $"| 基恩士20站.温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
+                    txtDeviceInfo.Text = $"| 温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
 
                     ledPWR.Fill = Brushes.LimeGreen;
                     ledCOM.Fill = Brushes.Green;
@@ -1002,15 +1080,14 @@ namespace DTE10T_WPF
                         await _modbus.WriteTdAsync(ch, model.Td);
                         break;
                     case "AT自整定":
-                        await _modbus.StartATAsync(ch);
-                        //if (model.ATEnabled)
-                        //{
-                        //    await _modbus.StartATAsync(ch);
-                        //}
-                        //else
-                        //{
-                        //    await _modbus.StopATAsync(ch);
-                        //}
+                        if(!model.ATEnabled)
+                        {
+                            await _modbus.StartATAsync(ch);
+                        }
+                        else
+                        {
+                            await _modbus.StopATAsync(ch);
+                        }
 
                         break;
                 }
@@ -1077,76 +1154,6 @@ namespace DTE10T_WPF
                 txtStatus.Foreground = Brushes.Red;
                 System.Diagnostics.Debug.WriteLine($"[Write] 写入失败: {ex.Message}");
             }
-        }
-
-        ///<summary>
-        /// 设置全部 SV 值</summary>
-        private void BtnSetAllSV_Click(object sender, RoutedEventArgs e)
-        {
-            if(double.TryParse(txtSetAllSV.Text, out double value))
-            {
-                foreach(var item in PVSVList)
-                {
-                    item.SV = value;
-                }
-                txtStatus.Text = "已设置全部 SV 值";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            else
-            {
-                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        ///<summary>
-        /// 设置全部量程上限</summary>
-        private void BtnSetAllRangeHigh_Click(object sender, RoutedEventArgs e)
-        {
-            if(double.TryParse(txtSetAllRangeHigh.Text, out double value))
-            {
-                foreach(var item in PVSVList)
-                {
-                    item.RangeHigh = value;
-                }
-                txtStatus.Text = "已设置全部量程上限";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            else
-            {
-                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        ///<summary>
-        /// 设置全部量程下限</summary>
-        private void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
-        {
-            if(double.TryParse(txtSetAllRangeLow.Text, out double value))
-            {
-                foreach(var item in PVSVList)
-                {
-                    item.RangeLow = value;
-                }
-                txtStatus.Text = "已设置全部量程下限";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            else
-            {
-                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        ///<summary>
-        /// 设置全部通道使能</summary>
-        private void BtnSetAllEnabled_Click(object sender, RoutedEventArgs e)
-        {
-            bool enabled = chkSetAllEnabled.IsChecked ?? false;
-            foreach(var item in PVSVList)
-            {
-                item.IsEnabled = enabled;
-            }
-            txtStatus.Text = enabled ? "已启用全部通道" : "已禁用全部通道";
-            txtStatus.Foreground = Brushes.Green;
         }
 
         ///<summary>
@@ -1846,10 +1853,35 @@ namespace DTE10T_WPF
         {
             var stepStart = Stopwatch.StartNew();
             var pvs = await _modbus!.ReadAllPVAsync();
+            DateTime now = DateTime.Now;
             for(int i = 0; i < 8 && i < TempCards.Count; i++)
             {
-                TempCards[i].PV = Math.Round(pvs[i], 1);
-                PVSVList[i].PV = Math.Round(pvs[i], 1);
+                double currentPV = Math.Round(pvs[i], 1);
+                TempCards[i].PV = currentPV;
+                PVSVList[i].PV = currentPV;
+
+                // 计算温度变化速率 (℃/min)
+                if(_lastPVTime[i] != DateTime.MinValue)
+                {
+                    TimeSpan timeDiff = now - _lastPVTime[i];
+                    if(timeDiff.TotalSeconds >= RateCalculationSeconds)
+                    {
+                        double tempDiff = currentPV - _lastPVValues[i];
+                        double ratePerMinute = (tempDiff / timeDiff.TotalSeconds) * 60;
+                        TempCards[i].RateOfChange = Math.Round(ratePerMinute, 1);
+
+                        // 更新记录
+                        _lastPVValues[i] = currentPV;
+                        _lastPVTime[i] = now;
+                    }
+                }
+                else
+                {
+                    // 首次记录
+                    _lastPVValues[i] = currentPV;
+                    _lastPVTime[i] = now;
+                    TempCards[i].RateOfChange = 0;
+                }
 
                 // 读取输出1量和输出2量
                 ushort o1Value = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
@@ -1921,6 +1953,12 @@ namespace DTE10T_WPF
                 out2Values[i] = PVSVList[i].Out2;
             }
             _recordedData.Add(new RecordedDataPoint(DateTime.Now, elapsedSeconds, chValues, out1Values, out2Values));
+
+            // 每100条数据自动保存临时CSV文件
+            if(_recordedData.Count % AutoSaveInterval == 0)
+            {
+                SaveTempCsvFile();
+            }
         }
 
         private void SaveConfig()
@@ -1973,6 +2011,64 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
+        /// 保存临时CSV文件</summary>
+        private void SaveTempCsvFile()
+        {
+            try
+            {
+                _tempFileCounter++;
+                string tempFilePath = Path.Combine(_tempFolder, $"temp_{_tempFileCounter:D4}.csv");
+
+                using(var writer = new StreamWriter(tempFilePath, false, System.Text.Encoding.UTF8))
+                {
+                    // 写入表头
+                    writer.Write("时间戳,相对时间(s)");
+                    for(int i = 0; i < 8; i++)
+                    {
+                        writer.Write($",CH{i + 1}(℃)");
+                    }
+                    for(int i = 0; i < 8; i++)
+                    {
+                        writer.Write($",CH{i + 1}输出1(%)");
+                    }
+                    for(int i = 0; i < 8; i++)
+                    {
+                        writer.Write($",CH{i + 1}输出2(%)");
+                    }
+                    writer.WriteLine();
+
+                    // 写入最近100条数据
+                    int startIndex = Math.Max(0, _recordedData.Count - AutoSaveInterval);
+                    for(int idx = startIndex; idx < _recordedData.Count; idx++)
+                    {
+                        var point = _recordedData[idx];
+                        writer.Write($"{point.Timestamp:yyyy-MM-dd HH:mm:ss},{point.ElapsedSeconds:F2}");
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",{point.CHValues[i]:F1}");
+                        }
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",{point.Out1Values[i]:F1}");
+                        }
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",{point.Out2Values[i]:F1}");
+                        }
+                        writer.WriteLine();
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[TempCSV] 已保存临时文件: {tempFilePath}, 数据条数: {AutoSaveInterval}");
+                txtStatus.Text = $"📝 已记录 {_recordedData.Count} 条数据 (临时文件 #{_tempFileCounter})";
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TempCSV] 保存临时文件失败: {ex.Message}");
+            }
+        }
+
+        ///<summary>
         /// 将传感器数值转换为工程值（考虑缩放因子）</summary>
         private static double ScaleToEngineering(ushort rawValue, double scaling)
         { return Math.Round(rawValue * scaling, 2); }
@@ -2008,6 +2104,19 @@ namespace DTE10T_WPF
             _isRecording = true;
             _recordStartTime = DateTime.Now;
             _recordedData.Clear();
+            _tempFileCounter = 0;
+
+            // 创建临时文件夹
+            _tempFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "DTE10T_WPF",
+                "TempRecords",
+                _recordStartTime.ToString("yyyyMMdd_HHmmss")
+            );
+            if(!Directory.Exists(_tempFolder))
+            {
+                Directory.CreateDirectory(_tempFolder);
+            }
 
             btnStartRecord.IsEnabled = false;
             btnStopRecord.IsEnabled = true;

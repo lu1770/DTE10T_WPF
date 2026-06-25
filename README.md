@@ -1,4 +1,4 @@
-# 基恩士20站.温控器1 — 台达 DTE10T WPF 监控配置工具
+# 温控器1 — 台达 DTE10T WPF 监控配置工具
 
 > 🌐 **多语言 / Languages / 多言語 / 다국어**
 > [简体中文](README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md)

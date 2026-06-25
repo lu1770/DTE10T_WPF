@@ -12,6 +12,7 @@ namespace DTE10T_WPF
         private double _pv;
         private string _status = string.Empty;
         private double _sv;
+        private double _rateOfChange;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -53,6 +54,16 @@ namespace DTE10T_WPF
             set
             {
                 _pv = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double RateOfChange
+        {
+            get => _rateOfChange;
+            set
+            {
+                _rateOfChange = value;
                 OnPropertyChanged();
             }
         }
