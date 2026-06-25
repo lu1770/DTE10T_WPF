@@ -11,7 +11,7 @@
     MinHeight="700"
     Closing="Window_Closing"
     FontFamily="Microsoft YaHei"
-    FontSize="12">
+    FontSize="14">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="321*" />
@@ -443,6 +443,35 @@
                                     Margin="8,4"
                                     HorizontalAlignment="Right"
                                     Orientation="Horizontal">
+                                    <TextBlock
+                                        Margin="0,0,4,0"
+                                        VerticalAlignment="Center"
+                                        FontWeight="Bold"
+                                        Text="温度范围:" />
+                                    <TextBox
+                                        x:Name="txtTempLower"
+                                        Width="70"
+                                        Margin="0,0,4,0"
+                                        Padding="2"
+                                        TextAlignment="Center"
+                                        ToolTip="温度下界" />
+                                    <TextBlock
+                                        Margin="0,0,4,0"
+                                        VerticalAlignment="Center"
+                                        Text="~" />
+                                    <TextBox
+                                        x:Name="txtTempUpper"
+                                        Width="70"
+                                        Margin="0,0,4,0"
+                                        Padding="2"
+                                        TextAlignment="Center"
+                                        ToolTip="温度上界" />
+                                    <Button
+                                        x:Name="btnApplyTempRange"
+                                        Width="60"
+                                        Margin="0,0,12,0"
+                                        Click="BtnApplyTempRange_Click"
+                                        Content="应用" />
                                     <Button
                                         x:Name="btnClearChart"
                                         Width="80"

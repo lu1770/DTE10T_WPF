@@ -106,6 +106,8 @@ namespace DTE10T_WPF
         private DateTime _recordStartTime;
         // ========== OxyPlot 图表相关 ==========
         private PlotModel? _temperaturePlotModel;
+        private LineSeries? _tempUpperLine;
+        private LineSeries? _tempLowerLine;
         // ========== 临时CSV文件保存 ==========
         private int _tempFileCounter = 0;
         private string _tempFolder = string.Empty;
@@ -602,6 +604,54 @@ namespace DTE10T_WPF
             {
                 _temperaturePlotModel.InvalidatePlot(true);
             }
+        }
+
+        private void BtnApplyTempRange_Click(object sender, RoutedEventArgs e)
+        {
+            if(_tempUpperLine == null || _tempLowerLine == null || _temperaturePlotModel == null)
+            {
+                return;
+            }
+
+            double? lowerValue = null;
+            double? upperValue = null;
+
+            if(!string.IsNullOrEmpty(txtTempLower.Text) && double.TryParse(txtTempLower.Text, out double lower))
+            {
+                lowerValue = lower;
+            }
+
+            if(!string.IsNullOrEmpty(txtTempUpper.Text) && double.TryParse(txtTempUpper.Text, out double upper))
+            {
+                upperValue = upper;
+            }
+
+            _tempLowerLine.Points.Clear();
+            _tempUpperLine.Points.Clear();
+
+            if(lowerValue.HasValue)
+            {
+                _tempLowerLine.Points.Add(new DataPoint(0, lowerValue.Value));
+                _tempLowerLine.Points.Add(new DataPoint(60, lowerValue.Value));
+                _tempLowerLine.IsVisible = true;
+            }
+            else
+            {
+                _tempLowerLine.IsVisible = false;
+            }
+
+            if(upperValue.HasValue)
+            {
+                _tempUpperLine.Points.Add(new DataPoint(0, upperValue.Value));
+                _tempUpperLine.Points.Add(new DataPoint(60, upperValue.Value));
+                _tempUpperLine.IsVisible = true;
+            }
+            else
+            {
+                _tempUpperLine.IsVisible = false;
+            }
+
+            _temperaturePlotModel.InvalidatePlot(true);
         }
 
         private async Task ConnectAsync()
@@ -1534,6 +1584,28 @@ namespace DTE10T_WPF
                 _temperaturePlotModel.Series.Add(_out2Series[i]);
             }
 
+            _tempUpperLine = new LineSeries
+            {
+                Title = "温度上界",
+                Color = OxyColors.Red,
+                StrokeThickness = 2,
+                MarkerType = MarkerType.None,
+                LineStyle = LineStyle.Dash,
+                IsVisible = false
+            };
+            _temperaturePlotModel.Series.Add(_tempUpperLine);
+
+            _tempLowerLine = new LineSeries
+            {
+                Title = "温度下界",
+                Color = OxyColors.Blue,
+                StrokeThickness = 2,
+                MarkerType = MarkerType.None,
+                LineStyle = LineStyle.Dash,
+                IsVisible = false
+            };
+            _temperaturePlotModel.Series.Add(_tempLowerLine);
+
             _chartStartTime = DateTime.Now;
         }
 
@@ -2153,6 +2225,37 @@ namespace DTE10T_WPF
             }
         }
 
+        private void UpdateTempRangeLines(double currentTime)
+        {
+            if(_tempUpperLine == null || _tempLowerLine == null)
+            {
+                return;
+            }
+
+            double minTime = currentTime - 60;
+            if(minTime < 0)
+            {
+                minTime = 0;
+            }
+            double maxTime = currentTime + 5;
+
+            if(_tempLowerLine.IsVisible && _tempLowerLine.Points.Count > 0)
+            {
+                double yValue = _tempLowerLine.Points[0].Y;
+                _tempLowerLine.Points.Clear();
+                _tempLowerLine.Points.Add(new DataPoint(minTime, yValue));
+                _tempLowerLine.Points.Add(new DataPoint(maxTime, yValue));
+            }
+
+            if(_tempUpperLine.IsVisible && _tempUpperLine.Points.Count > 0)
+            {
+                double yValue = _tempUpperLine.Points[0].Y;
+                _tempUpperLine.Points.Clear();
+                _tempUpperLine.Points.Add(new DataPoint(minTime, yValue));
+                _tempUpperLine.Points.Add(new DataPoint(maxTime, yValue));
+            }
+        }
+
         private void UpdateChart()
         {
             if(_isChartPaused || _channelSeries == null || _temperaturePlotModel == null)
@@ -2225,6 +2328,8 @@ namespace DTE10T_WPF
                     }
                 }
             }
+
+            UpdateTempRangeLines(currentTime);
 
             _temperaturePlotModel.InvalidatePlot(true);
         }
