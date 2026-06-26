@@ -22,8 +22,8 @@
     <DebugType>pdbonly</DebugType>
     <DebugSymbols>true</DebugSymbols>
     
-    <!-- 减少文件复制 -->
-    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- 确保依赖复制到输出目录 -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     
     <!-- 并行构建 -->
     <MaxCpuCount>0</MaxCpuCount>

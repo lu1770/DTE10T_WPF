@@ -13,6 +13,10 @@ namespace DTE10T_WPF
         private string _status = string.Empty;
         private double _sv;
         private double _rateOfChange;
+        private double _mean;
+        private double _stdDev;
+        private double _zScore;
+        private double _probability;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -84,6 +88,46 @@ namespace DTE10T_WPF
             set
             {
                 _sv = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double Mean
+        {
+            get => _mean;
+            set
+            {
+                _mean = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double StdDev
+        {
+            get => _stdDev;
+            set
+            {
+                _stdDev = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double ZScore
+        {
+            get => _zScore;
+            set
+            {
+                _zScore = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double Probability
+        {
+            get => _probability;
+            set
+            {
+                _probability = value;
                 OnPropertyChanged();
             }
         }

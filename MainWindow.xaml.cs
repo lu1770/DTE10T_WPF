@@ -95,6 +95,8 @@ namespace DTE10T_WPF
         private DateTime[] _lastPVTime = new DateTime[8];
         // ========== 温度变化速率计算 ==========
         private double[] _lastPVValues = new double[8];
+        private readonly int _maxHistoryPoints = 100;
+        private readonly List<double>[] _historyPVValues = new List<double>[8];
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
@@ -120,6 +122,11 @@ namespace DTE10T_WPF
             LoadAvailablePorts();
             InitializeChart();
             DataContext = this;
+
+            for(int i = 0; i < 8; i++)
+            {
+                _historyPVValues[i] = new List<double>();
+            }
 
             LoadConfigIfExists();
             SetupConfigChangeListeners();
@@ -741,6 +748,12 @@ namespace DTE10T_WPF
                     series.Points.Clear();
                 }
             }
+            
+            for(int i = 0; i < 8; i++)
+            {
+                _historyPVValues[i].Clear();
+            }
+            
             _chartStartTime = DateTime.Now;
             _chartTimeOffset = 0;
 
@@ -2040,6 +2053,16 @@ namespace DTE10T_WPF
                 TempCards[i].PV = currentPV;
                 PVSVList[i].PV = currentPV;
 
+                // 更新历史数据
+                _historyPVValues[i].Add(rawPV);
+                if(_historyPVValues[i].Count > _maxHistoryPoints)
+                {
+                    _historyPVValues[i].RemoveAt(0);
+                }
+
+                // 计算统计值
+                CalculateStatistics(i, rawPV);
+
                 // 计算温度变化速率 (℃/min)
                 if(_lastPVTime[i] != DateTime.MinValue)
                 {
@@ -2073,6 +2096,40 @@ namespace DTE10T_WPF
             }
             stepStart.Stop();
             // Debug.WriteLine($"[步骤1] 读取PV值耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private void CalculateStatistics(int channelIndex, double currentPV)
+        {
+            var history = _historyPVValues[channelIndex];
+            if(history.Count < 2)
+            {
+                TempCards[channelIndex].Mean = currentPV;
+                TempCards[channelIndex].StdDev = 0;
+                TempCards[channelIndex].ZScore = 0;
+                TempCards[channelIndex].Probability = 0.5;
+                return;
+            }
+
+            double mean = history.Average();
+            double variance = history.Sum(v => Math.Pow(v - mean, 2)) / (history.Count - 1);
+            double stdDev = Math.Sqrt(variance);
+            
+            double zScore = stdDev > 0.001 ? (currentPV - mean) / stdDev : 0;
+            double probability = NormalDistributionCDF(zScore);
+
+            TempCards[channelIndex].Mean = Math.Round(mean, 1);
+            TempCards[channelIndex].StdDev = Math.Round(stdDev, 2);
+            TempCards[channelIndex].ZScore = Math.Round(zScore, 2);
+            TempCards[channelIndex].Probability = Math.Round(probability, 4);
+        }
+
+        private double NormalDistributionCDF(double z)
+        {
+            double t = 1.0 / (1.0 + 0.2316419 * Math.Abs(z));
+            double d = 0.3989423 * Math.Exp(-z * z / 2.0);
+            double prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            
+            return z >= 0 ? 1.0 - prob : prob;
         }
 
         private async Task PollSensorTypesAsync()

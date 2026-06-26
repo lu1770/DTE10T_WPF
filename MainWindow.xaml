@@ -384,6 +384,10 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <TextBlock
                                                     Grid.Row="0"
@@ -419,6 +423,34 @@
                                                     FontSize="11"
                                                     Foreground="Gray"
                                                     Text="{Binding Status}" />
+                                                <TextBlock
+                                                    Grid.Row="5"
+                                                    Margin="0,4,0,0"
+                                                    HorizontalAlignment="Center"
+                                                    FontSize="11"
+                                                    Foreground="#4527A0"
+                                                    Text="{Binding Mean, StringFormat='μ: {0:F1} ℃'}" />
+                                                <TextBlock
+                                                    Grid.Row="6"
+                                                    Margin="0,2,0,0"
+                                                    HorizontalAlignment="Center"
+                                                    FontSize="11"
+                                                    Foreground="#5D4037"
+                                                    Text="{Binding StdDev, StringFormat='σ: {0:F2}'}" />
+                                                <TextBlock
+                                                    Grid.Row="7"
+                                                    Margin="0,2,0,0"
+                                                    HorizontalAlignment="Center"
+                                                    FontSize="11"
+                                                    Foreground="#00695C"
+                                                    Text="{Binding ZScore, StringFormat='Z: {0:F2}'}" />
+                                                <TextBlock
+                                                    Grid.Row="8"
+                                                    Margin="0,2,0,0"
+                                                    HorizontalAlignment="Center"
+                                                    FontSize="11"
+                                                    Foreground="#BF360C"
+                                                    Text="{Binding Probability, StringFormat='P: {0:F4}'}" />
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
