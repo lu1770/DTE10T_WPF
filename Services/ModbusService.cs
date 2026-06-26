@@ -3231,6 +3231,12 @@ namespace DTE10T_WPF.Services
             return await WriteSingleRegisterAsync(addr, (ushort)value);
         }
 
+        public async Task<bool> WriteControlCycleAsync(int channel, int value)
+        {
+            int addr = 0x10D0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
         ///<summary>
         /// 写入输出1量 (手动模式) — H1070 + channel</summary>
         public async Task<bool> WriteOutput1Async(int channel, double value)

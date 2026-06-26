@@ -762,52 +762,146 @@
 
             <!--  Tab5: 输出配置  -->
             <TabItem Header="⚡ 输出配置">
-                <DataGrid
-                    x:Name="dgOutput"
-                    AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    CellEditEnding="DgOutput_CellEditEnding"
-                    GridLinesVisibility="All"
-                    HeadersVisibility="Column"
-                    RowBackground="{StaticResource RowOddBrush}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn
-                            Width="60"
-                            Binding="{Binding Channel}"
-                            Header="通道"
-                            IsReadOnly="True" />
-                        <DataGridTextColumn
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel
+                        Grid.Row="0"
+                        Margin="8,4"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            FontWeight="Bold"
+                            Text="设置全部:" />
+                        <ComboBox
+                            x:Name="cmbSetAllOut1Function"
                             Width="130"
-                            Binding="{Binding Out1Function}"
-                            Header="OUT1 功能"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="OUT1 功能">
+                            <ComboBoxItem Content="加热(逆向)" />
+                            <ComboBoxItem Content="冷却(正向)" />
+                            <ComboBoxItem Content="比例输出" />
+                            <ComboBoxItem Content="输出禁能" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllOut1Function_Click"
+                            Content="OUT1全部" />
+                        <ComboBox
+                            x:Name="cmbSetAllOut2Function"
                             Width="130"
-                            Binding="{Binding Out2Function}"
-                            Header="OUT2 功能"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding OutMax, StringFormat=F0}"
-                            Header="输出上限 (%)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding OutMin, StringFormat=F0}"
-                            Header="输出下限 (%)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding ControlCycle, StringFormat=F0}"
-                            Header="控制周期 (s)"
-                            IsReadOnly="False" />
-                        <DataGridCheckBoxColumn
-                            Width="80"
-                            Binding="{Binding OutputReverse}"
-                            Header="输出反向" />
-                    </DataGrid.Columns>
-                </DataGrid>
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="OUT2 功能">
+                            <ComboBoxItem Content="加热(逆向)" />
+                            <ComboBoxItem Content="冷却(正向)" />
+                            <ComboBoxItem Content="比例输出" />
+                            <ComboBoxItem Content="输出禁能" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllOut2Function_Click"
+                            Content="OUT2全部" />
+                        <TextBox
+                            x:Name="txtSetAllOutMax"
+                            Width="90"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="输出上限 (%)" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllOutMax_Click"
+                            Content="上限全部" />
+                        <TextBox
+                            x:Name="txtSetAllOutMin"
+                            Width="90"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="输出下限 (%)" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllOutMin_Click"
+                            Content="下限全部" />
+                        <TextBox
+                            x:Name="txtSetAllControlCycle"
+                            Width="90"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="控制周期" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllControlCycle_Click"
+                            Content="周期全部" />
+                        <CheckBox
+                            x:Name="chkSetAllOutputReverse"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            Content="输出反向" />
+                        <Button
+                            Width="70"
+                            Click="BtnSetAllOutputReverse_Click"
+                            Content="反向全部" />
+                    </StackPanel>
+                    <DataGrid
+                        x:Name="dgOutput"
+                        Grid.Row="1"
+                        AlternatingRowBackground="{StaticResource RowEvenBrush}"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CellEditEnding="DgOutput_CellEditEnding"
+                        GridLinesVisibility="All"
+                        HeadersVisibility="Column"
+                        RowBackground="{StaticResource RowOddBrush}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="60"
+                                Binding="{Binding Channel}"
+                                Header="通道"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="130"
+                                Binding="{Binding Out1Function}"
+                                Header="OUT1 功能"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="130"
+                                Binding="{Binding Out2Function}"
+                                Header="OUT2 功能"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding OutMax, StringFormat=F0}"
+                                Header="输出上限 (%)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding OutMin, StringFormat=F0}"
+                                Header="输出下限 (%)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding ControlCycle, StringFormat=F0}"
+                                Header="控制周期 (s)"
+                                IsReadOnly="False" />
+                            <DataGridCheckBoxColumn
+                                Width="80"
+                                Binding="{Binding OutputReverse}"
+                                Header="输出反向" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </TabItem>
 
             <!--  Tab6: 高级功能  -->

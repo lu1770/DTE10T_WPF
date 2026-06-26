@@ -106,11 +106,11 @@ namespace DTE10T_WPF
         private DateTime _recordStartTime;
         // ========== OxyPlot 图表相关 ==========
         private PlotModel? _temperaturePlotModel;
-        private LineSeries? _tempUpperLine;
-        private LineSeries? _tempLowerLine;
         // ========== 临时CSV文件保存 ==========
         private int _tempFileCounter = 0;
         private string _tempFolder = string.Empty;
+        private LineSeries? _tempLowerLine;
+        private LineSeries? _tempUpperLine;
 
         public MainWindow()
         {
@@ -205,7 +205,7 @@ namespace DTE10T_WPF
                 txtStatus.Foreground = Brushes.Red;
             }
             ws.Stop();
-            Debug.WriteLine($"总耗时:{ws.ElapsedMilliseconds}ms");
+            //Debug.WriteLine($"总耗时:{ws.ElapsedMilliseconds}ms");
             return true;
         }
 
@@ -343,6 +343,54 @@ namespace DTE10T_WPF
             };
         }
 
+        private void BtnApplyTempRange_Click(object sender, RoutedEventArgs e)
+        {
+            if(_tempUpperLine == null || _tempLowerLine == null || _temperaturePlotModel == null)
+            {
+                return;
+            }
+
+            double? lowerValue = null;
+            double? upperValue = null;
+
+            if(!string.IsNullOrEmpty(txtTempLower.Text) && double.TryParse(txtTempLower.Text, out double lower))
+            {
+                lowerValue = lower;
+            }
+
+            if(!string.IsNullOrEmpty(txtTempUpper.Text) && double.TryParse(txtTempUpper.Text, out double upper))
+            {
+                upperValue = upper;
+            }
+
+            _tempLowerLine.Points.Clear();
+            _tempUpperLine.Points.Clear();
+
+            if(lowerValue.HasValue)
+            {
+                _tempLowerLine.Points.Add(new DataPoint(0, lowerValue.Value));
+                _tempLowerLine.Points.Add(new DataPoint(60, lowerValue.Value));
+                _tempLowerLine.IsVisible = true;
+            }
+            else
+            {
+                _tempLowerLine.IsVisible = false;
+            }
+
+            if(upperValue.HasValue)
+            {
+                _tempUpperLine.Points.Add(new DataPoint(0, upperValue.Value));
+                _tempUpperLine.Points.Add(new DataPoint(60, upperValue.Value));
+                _tempUpperLine.IsVisible = true;
+            }
+            else
+            {
+                _tempUpperLine.IsVisible = false;
+            }
+
+            _temperaturePlotModel.InvalidatePlot(true);
+        }
+
         private void BtnClearChart_Click(object sender, RoutedEventArgs e) { ClearChart(); }
 
         // ========== 连接 / 断开 ==========
@@ -463,6 +511,11 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
+        /// 设置全部控制周期</summary>
+        private void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e)
+        { SetAllControlCycle().ConfigureAwait(false); }
+
+        ///<summary>
         /// 设置全部通道使能</summary>
         private void BtnSetAllEnabled_Click(object sender, RoutedEventArgs e)
         {
@@ -472,6 +525,97 @@ namespace DTE10T_WPF
                 item.IsEnabled = enabled;
             }
             txtStatus.Text = enabled ? "已启用全部通道" : "已禁用全部通道";
+            txtStatus.Foreground = Brushes.Green;
+        }
+
+        ///<summary>
+        /// 设置全部 OUT1 功能</summary>
+        private void BtnSetAllOut1Function_Click(object sender, RoutedEventArgs e)
+        {
+            string? function = (cmbSetAllOut1Function.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(function))
+            {
+                foreach(var item in OutputList)
+                {
+                    item.Out1Function = function;
+                }
+                txtStatus.Text = "已设置全部 OUT1 功能";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请选择有效的功能", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部 OUT2 功能</summary>
+        private void BtnSetAllOut2Function_Click(object sender, RoutedEventArgs e)
+        {
+            string? function = (cmbSetAllOut2Function.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(function))
+            {
+                foreach(var item in OutputList)
+                {
+                    item.Out2Function = function;
+                }
+                txtStatus.Text = "已设置全部 OUT2 功能";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请选择有效的功能", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部输出上限</summary>
+        private void BtnSetAllOutMax_Click(object sender, RoutedEventArgs e)
+        {
+            if(int.TryParse(txtSetAllOutMax.Text, out int value))
+            {
+                foreach(var item in OutputList)
+                {
+                    item.OutMax = value;
+                }
+                txtStatus.Text = "已设置全部输出上限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部输出下限</summary>
+        private void BtnSetAllOutMin_Click(object sender, RoutedEventArgs e)
+        {
+            if(int.TryParse(txtSetAllOutMin.Text, out int value))
+            {
+                foreach(var item in OutputList)
+                {
+                    item.OutMin = value;
+                }
+                txtStatus.Text = "已设置全部输出下限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部输出反向</summary>
+        private void BtnSetAllOutputReverse_Click(object sender, RoutedEventArgs e)
+        {
+            bool reverse = chkSetAllOutputReverse.IsChecked ?? false;
+            foreach(var item in OutputList)
+            {
+                item.OutputReverse = reverse;
+            }
+            txtStatus.Text = reverse ? "已启用全部输出反向" : "已禁用全部输出反向";
             txtStatus.Foreground = Brushes.Green;
         }
 
@@ -606,54 +750,6 @@ namespace DTE10T_WPF
             }
         }
 
-        private void BtnApplyTempRange_Click(object sender, RoutedEventArgs e)
-        {
-            if(_tempUpperLine == null || _tempLowerLine == null || _temperaturePlotModel == null)
-            {
-                return;
-            }
-
-            double? lowerValue = null;
-            double? upperValue = null;
-
-            if(!string.IsNullOrEmpty(txtTempLower.Text) && double.TryParse(txtTempLower.Text, out double lower))
-            {
-                lowerValue = lower;
-            }
-
-            if(!string.IsNullOrEmpty(txtTempUpper.Text) && double.TryParse(txtTempUpper.Text, out double upper))
-            {
-                upperValue = upper;
-            }
-
-            _tempLowerLine.Points.Clear();
-            _tempUpperLine.Points.Clear();
-
-            if(lowerValue.HasValue)
-            {
-                _tempLowerLine.Points.Add(new DataPoint(0, lowerValue.Value));
-                _tempLowerLine.Points.Add(new DataPoint(60, lowerValue.Value));
-                _tempLowerLine.IsVisible = true;
-            }
-            else
-            {
-                _tempLowerLine.IsVisible = false;
-            }
-
-            if(upperValue.HasValue)
-            {
-                _tempUpperLine.Points.Add(new DataPoint(0, upperValue.Value));
-                _tempUpperLine.Points.Add(new DataPoint(60, upperValue.Value));
-                _tempUpperLine.IsVisible = true;
-            }
-            else
-            {
-                _tempUpperLine.IsVisible = false;
-            }
-
-            _temperaturePlotModel.InvalidatePlot(true);
-        }
-
         private async Task ConnectAsync()
         {
             btnConnect.IsEnabled = false;
@@ -706,7 +802,7 @@ namespace DTE10T_WPF
                     await PollAllDataAsync();
 
                     // 启动定时轮询 (每 1 秒)
-                    var ms = 500;
+                    var ms = 1000;
                     _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
                 }
                 else
@@ -1067,6 +1163,13 @@ namespace DTE10T_WPF
                     case "输出下限 (%)":
                         await _modbus.WriteOutMinAsync(ch, model.OutMin);
                         break;
+                    case "控制周期 (s)":
+                        await _modbus.WriteControlCycleAsync(ch, model.ControlCycle);
+                        break;
+                    default:
+                        txtStatus.Text = $"未知列: {columnName}";
+                        txtStatus.Foreground = Brushes.Red;
+                        return;
                 }
                 txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
                 txtStatus.Foreground = Brushes.Green;
@@ -1880,6 +1983,10 @@ namespace DTE10T_WPF
 
                 ushort outMin = await _modbus!.ReadHoldingRegisterAsync(0x1988 + i);
                 OutputList[i].OutMin = outMin;
+
+                ushort ctrlCycle = await _modbus!.ReadHoldingRegisterAsync(0x10D0 + i);
+                int controlCycle = Convert.ToInt32(ctrlCycle);
+                OutputList[i].ControlCycle = controlCycle;
             }
             stepStart.Stop();
             // Debug.WriteLine($"[步骤6] 读取输出配置耗时: {stepStart.ElapsedMilliseconds}ms");
@@ -1928,7 +2035,8 @@ namespace DTE10T_WPF
             DateTime now = DateTime.Now;
             for(int i = 0; i < 8 && i < TempCards.Count; i++)
             {
-                double currentPV = Math.Round(pvs[i], 1);
+                double rawPV = pvs[i];
+                double currentPV = Math.Round(rawPV, 1);
                 TempCards[i].PV = currentPV;
                 PVSVList[i].PV = currentPV;
 
@@ -1938,19 +2046,20 @@ namespace DTE10T_WPF
                     TimeSpan timeDiff = now - _lastPVTime[i];
                     if(timeDiff.TotalSeconds >= RateCalculationSeconds)
                     {
-                        double tempDiff = currentPV - _lastPVValues[i];
-                        double ratePerMinute = (tempDiff / timeDiff.TotalSeconds) * 60;
+                        double tempDiff = rawPV - _lastPVValues[i];
+                        double ratePerMinute = (tempDiff / timeDiff.TotalMilliseconds) * 60 * 1000;
+                        Debug.WriteLine($"[步骤2] 温度变化速率: {ratePerMinute}℃/min ({tempDiff}℃ / {timeDiff.TotalMilliseconds}ms)");
                         TempCards[i].RateOfChange = Math.Round(ratePerMinute, 1);
 
                         // 更新记录
-                        _lastPVValues[i] = currentPV;
+                        _lastPVValues[i] = rawPV;
                         _lastPVTime[i] = now;
                     }
                 }
                 else
                 {
                     // 首次记录
-                    _lastPVValues[i] = currentPV;
+                    _lastPVValues[i] = rawPV;
                     _lastPVTime[i] = now;
                     TempCards[i].RateOfChange = 0;
                 }
@@ -2145,6 +2254,24 @@ namespace DTE10T_WPF
         private static double ScaleToEngineering(ushort rawValue, double scaling)
         { return Math.Round(rawValue * scaling, 2); }
 
+        private async Task SetAllControlCycle()
+        {
+            if(int.TryParse(txtSetAllControlCycle.Text, out int value))
+            {
+                foreach(OutputModel outputListItem in OutputList)
+                {
+                    outputListItem.ControlCycle = value;
+                    await _modbus.WriteControlCycleAsync(GetChannelIndex(outputListItem.Channel), value);
+                }
+                txtStatus.Text = "已设置全部控制周期";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void SetupConfigChangeListeners()
         {
             // 监听串口设置变化
@@ -2222,37 +2349,6 @@ namespace DTE10T_WPF
             {
                 _chartStartTime = DateTime.Now;
                 _chartTimeOffset = 0;
-            }
-        }
-
-        private void UpdateTempRangeLines(double currentTime)
-        {
-            if(_tempUpperLine == null || _tempLowerLine == null)
-            {
-                return;
-            }
-
-            double minTime = currentTime - 60;
-            if(minTime < 0)
-            {
-                minTime = 0;
-            }
-            double maxTime = currentTime + 5;
-
-            if(_tempLowerLine.IsVisible && _tempLowerLine.Points.Count > 0)
-            {
-                double yValue = _tempLowerLine.Points[0].Y;
-                _tempLowerLine.Points.Clear();
-                _tempLowerLine.Points.Add(new DataPoint(minTime, yValue));
-                _tempLowerLine.Points.Add(new DataPoint(maxTime, yValue));
-            }
-
-            if(_tempUpperLine.IsVisible && _tempUpperLine.Points.Count > 0)
-            {
-                double yValue = _tempUpperLine.Points[0].Y;
-                _tempUpperLine.Points.Clear();
-                _tempUpperLine.Points.Add(new DataPoint(minTime, yValue));
-                _tempUpperLine.Points.Add(new DataPoint(maxTime, yValue));
             }
         }
 
@@ -2446,6 +2542,37 @@ namespace DTE10T_WPF
             UpdateChart();
             stepStart.Stop();
             // Debug.WriteLine($"[步骤14] 更新状态指示耗时: {stepStart.ElapsedMilliseconds}ms");
+        }
+
+        private void UpdateTempRangeLines(double currentTime)
+        {
+            if(_tempUpperLine == null || _tempLowerLine == null)
+            {
+                return;
+            }
+
+            double minTime = currentTime - 60;
+            if(minTime < 0)
+            {
+                minTime = 0;
+            }
+            double maxTime = currentTime + 5;
+
+            if(_tempLowerLine.IsVisible && _tempLowerLine.Points.Count > 0)
+            {
+                double yValue = _tempLowerLine.Points[0].Y;
+                _tempLowerLine.Points.Clear();
+                _tempLowerLine.Points.Add(new DataPoint(minTime, yValue));
+                _tempLowerLine.Points.Add(new DataPoint(maxTime, yValue));
+            }
+
+            if(_tempUpperLine.IsVisible && _tempUpperLine.Points.Count > 0)
+            {
+                double yValue = _tempUpperLine.Points[0].Y;
+                _tempUpperLine.Points.Clear();
+                _tempUpperLine.Points.Add(new DataPoint(minTime, yValue));
+                _tempUpperLine.Points.Add(new DataPoint(maxTime, yValue));
+            }
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
