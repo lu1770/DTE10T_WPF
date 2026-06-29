@@ -44,7 +44,18 @@ dotnet run --project DTE10T_WPF.csproj
 
 ### 단일 파일 exe 게시
 ```bash
-dotnet publish DTE10T_WPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish DTE10T_WPF.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true
+```
+
+**게시 참고사항：**
+- 출력 디렉토리：`bin\Release\net8.0-windows\publish\win-x86\`
+- 메인 실행 파일：`DTE10T_WPF.exe`
+- **참고**：WPF 애플리케이션은 exe에 번들링할 수 없는 네이티브 종속 DLL（`libSkiaSharp.dll`、`PresentationNative_cor3.dll`  등）을 포함합니다. 이 DLL들은 exe와 함께 배포해야 합니다
+- .NET 런타임 설치가 필요하지 않습니다（자체 포함 게시에 포함되어 있음）
+
+**게시 프로필 사용（권장）：**
+```bash
+dotnet publish DTE10T_WPF.csproj -c Release /p:PublishProfile=FolderProfile
 ```
 
 ## 실제 하드웨어 연결

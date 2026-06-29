@@ -44,7 +44,18 @@ dotnet run --project DTE10T_WPF.csproj
 
 ### Publish Single-File EXE
 ```bash
-dotnet publish DTE10T_WPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish DTE10T_WPF.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true
+```
+
+**Publish Notes:**
+- Output directory: `bin\Release\net8.0-windows\publish\win-x86\`
+- Main executable: `DTE10T_WPF.exe`
+- **Note:** WPF applications include some native dependency DLLs (`libSkiaSharp.dll`, `PresentationNative_cor3.dll`, etc.) that cannot be bundled into the exe and must be distributed together
+- No .NET runtime installation required (self-contained publish includes it)
+
+**Using Publish Profile (Recommended):**
+```bash
+dotnet publish DTE10T_WPF.csproj -c Release /p:PublishProfile=FolderProfile
 ```
 
 ## Connect to Real Hardware

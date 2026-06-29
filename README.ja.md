@@ -44,7 +44,18 @@ dotnet run --project DTE10T_WPF.csproj
 
 ### 単一ファイル EXE の発行
 ```bash
-dotnet publish DTE10T_WPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish DTE10T_WPF.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true
+```
+
+**発行の注意事項：**
+- 出力ディレクトリ：`bin\Release\net8.0-windows\publish\win-x86\`
+- メイン実行ファイル：`DTE10T_WPF.exe`
+- **注意**：WPF アプリケーションは exe にバンドルできないネイティブ依存 DLL（`libSkiaSharp.dll`、`PresentationNative_cor3.dll` など）を含みます。これらは exe と一緒に配布する必要があります
+- .NET ランタイムのインストールは不要です（自己完結型発行に含まれています）
+
+**発行プロファイルの使用（推奨）：**
+```bash
+dotnet publish DTE10T_WPF.csproj -c Release /p:PublishProfile=FolderProfile
 ```
 
 ## 実機への接続

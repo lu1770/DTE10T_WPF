@@ -44,7 +44,18 @@ dotnet run --project DTE10T_WPF.csproj
 
 ### 發布單一檔案 exe
 ```bash
-dotnet publish DTE10T_WPF.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish DTE10T_WPF.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true
+```
+
+**發布說明：**
+- 輸出目錄：`bin\Release\net8.0-windows\publish\win-x86\`
+- 主程式檔案：`DTE10T_WPF.exe`
+- **注意**：WPF 應用程式會包含少量原生依賴 DLL（`libSkiaSharp.dll`、`PresentationNative_cor3.dll` 等），這些無法打包到 exe 中，需隨 exe 一起散佈
+- 無需安裝 .NET 執行階段（自我包含發布已包含）
+
+**使用發布設定檔（推薦）：**
+```bash
+dotnet publish DTE10T_WPF.csproj -c Release /p:PublishProfile=FolderProfile
 ```
 
 ## 連接真實硬體
