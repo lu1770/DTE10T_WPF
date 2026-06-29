@@ -1,14 +1,14 @@
+using OxyPlot;
+using OxyPlot.Axes;
+using OxyPlot.Series;
+using OxyPlot.SkiaSharp;
+using SkiaSharp;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using OxyPlot;
-using OxyPlot.Axes;
-using OxyPlot.Series;
-using OxyPlot.SkiaSharp;
-using SkiaSharp;
 
 namespace DTE10T_WPF
 {
@@ -173,12 +173,12 @@ namespace DTE10T_WPF
                     series.Points.Clear();
                 }
             }
-            
+
             for(int i = 0; i < 8; i++)
             {
                 _historyPVValues[i].Clear();
             }
-            
+
             _chartStartTime = DateTime.Now;
             _chartTimeOffset = 0;
 
@@ -220,10 +220,10 @@ namespace DTE10T_WPF
             {
                 Position = AxisPosition.Left,
                 Title = "温度 (℃)",
-                Minimum = -200,
-                Maximum = 1300,
-                AbsoluteMinimum = -200,
-                AbsoluteMaximum = 1300,
+                Minimum = -50,
+                Maximum = 400,
+                AbsoluteMinimum = -50,
+                AbsoluteMaximum = 400,
                 MajorGridlineStyle = LineStyle.Solid,
                 MinorGridlineStyle = LineStyle.Dot,
                 MajorGridlineColor = OxyColors.LightGray,
