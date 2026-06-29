@@ -160,10 +160,10 @@ namespace DTE10T_WPF
 
         private void SetupConfigChangeListeners()
         {
-            txtStationCode.LostFocus += (sender, e) => SaveConfig();
-            cmbBaudRate.SelectionChanged += (sender, e) => SaveConfig();
-            cmbComPort.SelectionChanged += (sender, e) => SaveConfig();
-            cmbProtocol.SelectionChanged += (sender, e) => SaveConfig();
+            txtStationCode.LostFocus += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
+            cmbBaudRate.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
+            cmbComPort.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
+            cmbProtocol.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
 
             PVSVList.CollectionChanged += (sender, e) => SaveConfig();
             PIDList.CollectionChanged += (sender, e) => SaveConfig();

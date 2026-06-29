@@ -136,6 +136,128 @@ namespace DTE10T_WPF
             }
         }
 
+        private async Task ReconnectAsync()
+        {
+            if(!_isConnected)
+            {
+                return;
+            }
+
+            txtStatus.Text = "配置变更，正在重连...";
+            txtStatus.Foreground = Brushes.Orange;
+            ledCOM.Fill = Brushes.Yellow;
+
+            bool wasConnected = _isConnected;
+
+            try
+            {
+                _isConnected = false;
+                _pollTimer?.Dispose();
+                _pollTimer = null;
+
+                try
+                {
+                    _modbus?.Disconnect();
+                }
+                catch(Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Reconnect] 断开连接异常: {ex.Message}");
+                }
+                finally
+                {
+                    _modbus = null;
+                }
+
+                string port = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1";
+                int baudRate = int.Parse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"));
+                int slaveId = int.Parse(txtStationCode.Text);
+                string parity = "Even";
+                string stopBits = "1";
+                string protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU";
+
+                _modbus = new ModbusService(
+                    slaveId: slaveId,
+                    comPort: port,
+                    baudRate: baudRate,
+                    parity: parity,
+                    dataBits: 8,
+                    stopBits: stopBits,
+                    protocol: protocol
+                );
+
+                bool success = await _modbus.ConnectAsync();
+
+                if(success)
+                {
+                    _isConnected = true;
+                    txtStatus.Text = "已连接";
+                    txtStatus.Foreground = Brushes.Green;
+                    btnConnect.IsEnabled = false;
+                    btnDisconnect.IsEnabled = true;
+                    btnRefresh.IsEnabled = true;
+                    txtConnStatus.Text = "● 已连接";
+                    txtConnStatus.Foreground = Brushes.Green;
+
+                    string baud = cmbBaudRate.Text;
+                    txtDeviceInfo.Text = $"| 温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
+
+                    ledPWR.Fill = Brushes.LimeGreen;
+                    ledCOM.Fill = Brushes.Green;
+
+                    await PollAllDataAsync();
+
+                    var ms = 1000;
+                    _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
+                }
+                else
+                {
+                    txtStatus.Text = "重连失败: 无法建立连接，请检查串口设置";
+                    txtStatus.Foreground = Brushes.Red;
+                    btnConnect.IsEnabled = true;
+                    btnDisconnect.IsEnabled = false;
+                    btnRefresh.IsEnabled = false;
+                    ledCOM.Fill = Brushes.Red;
+                    System.Diagnostics.Debug.WriteLine("[Reconnect] 无法重新连接到温控器");
+                }
+            }
+            catch(Exception ex)
+            {
+                string errorMessage = GetConnectionErrorMessage(ex);
+                txtStatus.Text = $"重连失败: {errorMessage}";
+                txtStatus.Foreground = Brushes.Red;
+                btnConnect.IsEnabled = true;
+                btnDisconnect.IsEnabled = false;
+                btnRefresh.IsEnabled = false;
+                ledCOM.Fill = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[Reconnect] 重连异常: {ex.Message}");
+            }
+        }
+
+        private void CalculateStatistics(int channelIndex, double currentPV)
+        {
+            var history = _historyPVValues[channelIndex];
+            if(history.Count < 2)
+            {
+                TempCards[channelIndex].Mean = currentPV;
+                TempCards[channelIndex].StdDev = 0;
+                TempCards[channelIndex].ZScore = 0;
+                TempCards[channelIndex].Probability = 0.5;
+                return;
+            }
+
+            double mean = history.Average();
+            double variance = history.Sum(v => Math.Pow(v - mean, 2)) / (history.Count - 1);
+            double stdDev = Math.Sqrt(variance);
+
+            double zScore = stdDev > 0.001 ? (currentPV - mean) / stdDev : 0;
+            double probability = NormalDistributionCDF(zScore);
+
+            TempCards[channelIndex].Mean = Math.Round(mean, 1);
+            TempCards[channelIndex].StdDev = Math.Round(stdDev, 2);
+            TempCards[channelIndex].ZScore = Math.Round(zScore, 2);
+            TempCards[channelIndex].Probability = Math.Round(probability, 4);
+        }
+
         private async Task ConnectAsync()
         {
             btnConnect.IsEnabled = false;
@@ -207,24 +329,41 @@ namespace DTE10T_WPF
             }
         }
 
-        private async Task PollAllDataAsync()
-        { await DoWorkAsync(nameof(ApplyPollAllDataAsync), async () => await ApplyPollAllDataAsync(), "轮询数据中..."); }
-
-        private async void PollCallback(object? state)
+        private string GetConnectionErrorMessage(Exception ex)
         {
-            if(!_isConnected || _modbus == null)
+            if(ex is System.IO.IOException)
             {
-                return;
+                return "串口无法打开，请检查端口是否被占用或不存在";
             }
+            else if(ex is UnauthorizedAccessException)
+            {
+                return "权限不足，无法访问串口";
+            }
+            else if(ex is ArgumentOutOfRangeException)
+            {
+                return "串口参数无效，请检查波特率等设置";
+            }
+            else if(ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+            {
+                return "连接超时，请检查设备是否在线或通讯参数是否正确";
+            }
+            else if(ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return "串口不存在，请检查COM端口设置";
+            }
+            else
+            {
+                return ex.Message;
+            }
+        }
 
-            try
-            {
-                await Dispatcher.InvokeAsync(async () => await PollAllDataAsync());
-            }
-            catch(Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[PollCallback] 定时轮询异常: {ex.Message}");
-            }
+        private double NormalDistributionCDF(double z)
+        {
+            double t = 1.0 / (1.0 + 0.2316419 * Math.Abs(z));
+            double d = 0.3989423 * Math.Exp(-z * z / 2.0);
+            double prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+
+            return z >= 0 ? 1.0 - prob : prob;
         }
 
         private async Task PollAlarmSettingsAsync()
@@ -248,6 +387,26 @@ namespace DTE10T_WPF
                 AlarmList[i].AlarmDelay = delay;
             }
             stepStart.Stop();
+        }
+
+        private async Task PollAllDataAsync()
+        { await DoWorkAsync(nameof(ApplyPollAllDataAsync), async () => await ApplyPollAllDataAsync(), "轮询数据中..."); }
+
+        private async void PollCallback(object? state)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await Dispatcher.InvokeAsync(async () => await PollAllDataAsync());
+            }
+            catch(Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PollCallback] 定时轮询异常: {ex.Message}");
+            }
         }
 
         private async Task PollCommParamsAsync()
@@ -417,6 +576,7 @@ namespace DTE10T_WPF
                 if(_lastPVTime[i] != DateTime.MinValue)
                 {
                     TimeSpan timeDiff = now - _lastPVTime[i];
+
                     if(timeDiff.TotalSeconds >= RateCalculationSeconds)
                     {
                         double tempDiff = rawPV - _lastPVValues[i];
@@ -442,40 +602,6 @@ namespace DTE10T_WPF
                 PVSVList[i].Out2 = Math.Round(o2Value * 0.1, 1);
             }
             stepStart.Stop();
-        }
-
-        private void CalculateStatistics(int channelIndex, double currentPV)
-        {
-            var history = _historyPVValues[channelIndex];
-            if(history.Count < 2)
-            {
-                TempCards[channelIndex].Mean = currentPV;
-                TempCards[channelIndex].StdDev = 0;
-                TempCards[channelIndex].ZScore = 0;
-                TempCards[channelIndex].Probability = 0.5;
-                return;
-            }
-
-            double mean = history.Average();
-            double variance = history.Sum(v => Math.Pow(v - mean, 2)) / (history.Count - 1);
-            double stdDev = Math.Sqrt(variance);
-            
-            double zScore = stdDev > 0.001 ? (currentPV - mean) / stdDev : 0;
-            double probability = NormalDistributionCDF(zScore);
-
-            TempCards[channelIndex].Mean = Math.Round(mean, 1);
-            TempCards[channelIndex].StdDev = Math.Round(stdDev, 2);
-            TempCards[channelIndex].ZScore = Math.Round(zScore, 2);
-            TempCards[channelIndex].Probability = Math.Round(probability, 4);
-        }
-
-        private double NormalDistributionCDF(double z)
-        {
-            double t = 1.0 / (1.0 + 0.2316419 * Math.Abs(z));
-            double d = 0.3989423 * Math.Exp(-z * z / 2.0);
-            double prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-            
-            return z >= 0 ? 1.0 - prob : prob;
         }
 
         private async Task PollSensorTypesAsync()
@@ -626,34 +752,6 @@ namespace DTE10T_WPF
 
             UpdateChart();
             stepStart.Stop();
-        }
-
-        private string GetConnectionErrorMessage(Exception ex)
-        {
-            if(ex is System.IO.IOException)
-            {
-                return "串口无法打开，请检查端口是否被占用或不存在";
-            }
-            else if(ex is UnauthorizedAccessException)
-            {
-                return "权限不足，无法访问串口";
-            }
-            else if(ex is ArgumentOutOfRangeException)
-            {
-                return "串口参数无效，请检查波特率等设置";
-            }
-            else if(ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
-            {
-                return "连接超时，请检查设备是否在线或通讯参数是否正确";
-            }
-            else if(ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-            {
-                return "串口不存在，请检查COM端口设置";
-            }
-            else
-            {
-                return ex.Message;
-            }
         }
 
         public async Task DoWorkAsync(string key, Func<Task> action, string message)
