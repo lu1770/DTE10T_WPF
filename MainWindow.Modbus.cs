@@ -88,7 +88,7 @@ namespace DTE10T_WPF
 
         private async void BtnConnect_Click(object sender, RoutedEventArgs e) { await ConnectAsync(); }
 
-        private void BtnDisconnect_Click(object sender, RoutedEventArgs e)
+        private async void BtnDisconnect_Click(object sender, RoutedEventArgs e)
         {
             _isConnected = false;
             _pollTimer?.Dispose();
@@ -96,7 +96,7 @@ namespace DTE10T_WPF
 
             try
             {
-                _modbus?.Disconnect();
+                await Task.Run(() => _modbus?.Disconnect());
             }
             catch(Exception ex)
             {

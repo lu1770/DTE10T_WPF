@@ -143,10 +143,10 @@ namespace DTE10T_WPF
             SetupConfigChangeListeners();
 
             ConnectAsync().ConfigureAwait(false);
-            Task.Run(() => {
-                Task.Delay(1000).Wait();
-                Application.Current.Dispatcher.Invoke(() => {
-                    StartRecord();
+            Task.Run(async () => {
+                await Task.Delay(1000);
+                Application.Current.Dispatcher.Invoke(async () => {
+                    await StartRecordAsync();
                 });
             });
         }
@@ -374,8 +374,8 @@ namespace DTE10T_WPF
 
         ///<summary>
         /// 设置全部控制周期</summary>
-        private void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e)
-        { SetAllControlCycle().ConfigureAwait(false); }
+        private async void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e)
+        { await SetAllControlCycle(); }
 
         ///<summary>
         /// 设置全部控制执行状态</summary>
@@ -549,7 +549,7 @@ namespace DTE10T_WPF
 
         ///<summary>
         /// 设置全部量程上限</summary>
-        private void BtnSetAllRangeHigh_Click(object sender, RoutedEventArgs e)
+        private async void BtnSetAllRangeHigh_Click(object sender, RoutedEventArgs e)
         {
             if(double.TryParse(txtSetAllRangeHigh.Text, out double value))
             {
@@ -559,6 +559,15 @@ namespace DTE10T_WPF
                 }
                 txtStatus.Text = "已设置全部量程上限";
                 txtStatus.Foreground = Brushes.Green;
+
+                if(_modbus != null && _isConnected)
+                {
+                    for(int i = 0; i < 8; i++)
+                    {
+                        await _modbus.WriteRangeHighAsync(i, value);
+                    }
+                    txtStatus.Text = "已写入全部量程上限";
+                }
             }
             else
             {
@@ -568,8 +577,8 @@ namespace DTE10T_WPF
 
         ///<summary>
         /// 设置全部量程下限</summary>
-        private void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
-        { SetAllRangeLow().ConfigureAwait(false); }
+        private async void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
+        { await SetAllRangeLow(); }
 
 
         // ========== 功能选择参数 (三) 批量设置按钮 ==========
@@ -608,7 +617,7 @@ namespace DTE10T_WPF
 
         ///<summary>
         /// 设置全部 SV 值</summary>
-        private void BtnSetAllSV_Click(object sender, RoutedEventArgs e) { SetAllSV().ConfigureAwait(false); }
+        private async void BtnSetAllSV_Click(object sender, RoutedEventArgs e) { await SetAllSV(); }
 
         // ========== DataGrid 编辑事件处理 ==========
 
@@ -905,15 +914,15 @@ namespace DTE10T_WPF
 
         private void Window_Closing(object sender, CancelEventArgs e)
         {
-            SaveConfig();
-            ExportToCsv();
+            SaveConfigAsync().ConfigureAwait(false);
+            ExportToCsvAsync().ConfigureAwait(false);
         }
 
         // ========== 窗口关闭 ==========
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             _pollTimer?.Dispose();
-            SaveConfig();
+            SaveConfigAsync().ConfigureAwait(false);
             try
             {
                 _modbus?.Disconnect();
@@ -925,6 +934,14 @@ namespace DTE10T_WPF
             finally
             {
                 _modbus = null;
+            }
+            try
+            {
+                MergeTempCsvFilesAsync().GetAwaiter().GetResult();
+            }
+            catch(Exception ex)
+            {
+                Logger.Error($"[Closing] 合并临时文件失败: {ex.Message}", ex);
             }
             base.OnClosing(e);
         }

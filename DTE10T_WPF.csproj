@@ -19,7 +19,7 @@
     <UseRazorIncrementalBuild>true</UseRazorIncrementalBuild>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.0" />
+    <PackageReference Include="log4net" Version="3.3.2" />
     <PackageReference Include="NModbus" Version="3.0.83" />
     <PackageReference Include="NModbus.Serial" Version="3.0.83" />
     <PackageReference Include="OxyPlot.SkiaSharp.Wpf" Version="2.2.0" />

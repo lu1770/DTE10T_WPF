@@ -2,6 +2,7 @@ using DTE10T_WPF.Config;
 using System;
 using System.IO.Ports;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -107,9 +108,9 @@ namespace DTE10T_WPF
             }
         }
 
-        private void ModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { SaveConfig(); }
+        private async void ModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { await SaveConfigAsync(); }
 
-        private void SaveConfig()
+        private async Task SaveConfigAsync()
         {
             if(_isConfigSaving)
             {
@@ -146,7 +147,7 @@ namespace DTE10T_WPF
                     }
                 };
 
-                ConfigManager.SaveConfig(config);
+                await Task.Run(() => ConfigManager.SaveConfig(config));
             }
             catch(Exception ex)
             {
@@ -160,23 +161,23 @@ namespace DTE10T_WPF
 
         private void SetupConfigChangeListeners()
         {
-            txtStationCode.LostFocus += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
-            cmbBaudRate.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
-            cmbComPort.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
-            cmbProtocol.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected) await ReconnectAsync(); };
+            txtStationCode.LostFocus += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
+            cmbBaudRate.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
+            cmbComPort.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
+            cmbProtocol.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
 
-            PVSVList.CollectionChanged += (sender, e) => SaveConfig();
-            PIDList.CollectionChanged += (sender, e) => SaveConfig();
-            AlarmList.CollectionChanged += (sender, e) => SaveConfig();
-            OutputList.CollectionChanged += (sender, e) => SaveConfig();
-            SlopeList.CollectionChanged += (sender, e) => SaveConfig();
-            InputAdjList.CollectionChanged += (sender, e) => SaveConfig();
-            CTList.CollectionChanged += (sender, e) => SaveConfig();
-            EventList.CollectionChanged += (sender, e) => SaveConfig();
-            HotRunnerList.CollectionChanged += (sender, e) => SaveConfig();
-            CommList.CollectionChanged += (sender, e) => SaveConfig();
-            PatternList.CollectionChanged += (sender, e) => SaveConfig();
-            StepList.CollectionChanged += (sender, e) => SaveConfig();
+            PVSVList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            PIDList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            AlarmList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            OutputList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            SlopeList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            InputAdjList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            CTList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            EventList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            HotRunnerList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            CommList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            PatternList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            StepList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
 
             AttachPropertyChangedListeners();
         }

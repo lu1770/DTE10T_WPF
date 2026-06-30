@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 
@@ -8,27 +10,28 @@ namespace DTE10T_WPF
 {
     public partial class MainWindow
     {
-        private void BtnStartRecord_Click(object sender, RoutedEventArgs e) { StartRecord(); }
+        private async void BtnStartRecord_Click(object sender, RoutedEventArgs e) { await StartRecordAsync(); }
 
-        private void BtnStopRecord_Click(object sender, RoutedEventArgs e) { StopRecord(); }
+        private async void BtnStopRecord_Click(object sender, RoutedEventArgs e) { await StopRecordAsync(); }
 
-        private void ExportToCsv()
+        private async Task ExportToCsvAsync()
         {
             try
             {
-                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "CSV 文件 (*.csv)|*.csv|所有文件 (*.*)|*.*",
-                    FilterIndex = 1,
-                    FileName = $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv",
-                    Title = "导出CSV文件"
-                };
+                string exportFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "DTE10T_WPF",
+                    "Exports"
+                );
 
-                bool? result = saveFileDialog.ShowDialog();
-                if(result == true)
+                if(!Directory.Exists(exportFolder))
                 {
-                    string filePath = saveFileDialog.FileName;
+                    Directory.CreateDirectory(exportFolder);
+                }
 
+                string filePath = Path.Combine(exportFolder, $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv");
+
+                await Task.Run(() => {
                     using(var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
                     {
                         writer.Write("时间戳,相对时间(s)");
@@ -64,14 +67,14 @@ namespace DTE10T_WPF
                             writer.WriteLine();
                         }
                     }
+                });
 
-                    txtStatus.Text = $"✅ 已导出 {_recordedData.Count} 条数据";
-                    txtStatus.Foreground = Brushes.Green;
+                txtStatus.Text = $"✅ 已导出 {_recordedData.Count} 条数据";
+                txtStatus.Foreground = Brushes.Green;
 
-                    MessageBox.Show($"数据已导出到:\n{filePath}", "导出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"数据已导出到:\n{filePath}", "导出成功", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
-                }
+                Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
             }
             catch(Exception ex)
             {
@@ -159,7 +162,7 @@ namespace DTE10T_WPF
             }
         }
 
-        private void StartRecord()
+        private async Task StartRecordAsync()
         {
             _isRecording = true;
             _recordStartTime = DateTime.Now;
@@ -172,10 +175,13 @@ namespace DTE10T_WPF
                 "TempRecords",
                 _recordStartTime.ToString("yyyyMMdd_HHmmss")
             );
-            if(!Directory.Exists(_tempFolder))
-            {
-                Directory.CreateDirectory(_tempFolder);
-            }
+
+            await Task.Run(() => {
+                if(!Directory.Exists(_tempFolder))
+                {
+                    Directory.CreateDirectory(_tempFolder);
+                }
+            });
 
             btnStartRecord.IsEnabled = false;
             btnStopRecord.IsEnabled = true;
@@ -183,7 +189,7 @@ namespace DTE10T_WPF
             txtStatus.Foreground = Brushes.Blue;
         }
 
-        private void StopRecord()
+        private async Task StopRecordAsync()
         {
             _isRecording = false;
             btnStartRecord.IsEnabled = true;
@@ -191,12 +197,69 @@ namespace DTE10T_WPF
 
             if(_recordedData.Count > 0)
             {
-                ExportToCsv();
+                await ExportToCsvAsync();
             }
             else
             {
                 txtStatus.Text = "没有记录的数据可导出";
                 txtStatus.Foreground = Brushes.Gray;
+            }
+        }
+
+        private async Task MergeTempCsvFilesAsync()
+        {
+            try
+            {
+                if(!Directory.Exists(_tempFolder))
+                {
+                    return;
+                }
+
+                string[] tempFiles = Directory.GetFiles(_tempFolder, "temp_*.csv")
+                    .OrderBy(f => f).ToArray();
+
+                if(tempFiles.Length == 0)
+                {
+                    return;
+                }
+
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                string mergedFilePath = Path.Combine(desktopPath, $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv");
+
+                await Task.Run(() => {
+                    bool headerWritten = false;
+                    using(var writer = new StreamWriter(mergedFilePath, false, System.Text.Encoding.UTF8))
+                    {
+                        foreach(string tempFile in tempFiles)
+                        {
+                            using(var reader = new StreamReader(tempFile, System.Text.Encoding.UTF8))
+                            {
+                                string line;
+                                bool isFirstLine = true;
+                                while((line = reader.ReadLine()) != null)
+                                {
+                                    if(isFirstLine)
+                                    {
+                                        isFirstLine = false;
+                                        if(!headerWritten)
+                                        {
+                                            writer.WriteLine(line);
+                                            headerWritten = true;
+                                        }
+                                        continue;
+                                    }
+                                    writer.WriteLine(line);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                Logger.Info($"[MergeCSV] 已合并 {tempFiles.Length} 个临时文件到桌面: {mergedFilePath}");
+            }
+            catch(Exception ex)
+            {
+                Logger.Error($"[MergeCSV] 合并临时文件失败: {ex.Message}", ex);
             }
         }
     }

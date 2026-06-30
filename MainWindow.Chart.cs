@@ -6,6 +6,7 @@ using SkiaSharp;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -14,8 +15,10 @@ namespace DTE10T_WPF
 {
     public partial class MainWindow
     {
-        private void BtnApplyTempRange_Click(object sender, RoutedEventArgs e)
+        private async void BtnApplyTempRange_Click(object sender, RoutedEventArgs e)
         {
+            await Task.Yield();
+
             if(_tempUpperLine == null || _tempLowerLine == null || _temperaturePlotModel == null)
             {
                 return;
@@ -66,7 +69,7 @@ namespace DTE10T_WPF
 
         private void BtnPauseChart_Click(object sender, RoutedEventArgs e) { ToggleChartPause(); }
 
-        private void BtnSaveImage_Click(object sender, RoutedEventArgs e)
+        private async void BtnSaveImage_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -89,16 +92,18 @@ namespace DTE10T_WPF
                 {
                     string filePath = saveFileDialog.FileName;
 
-                    using(var stream = File.Create(filePath))
-                    {
-                        var exporter = new PngExporter
+                    await Task.Run(() => {
+                        using(var stream = File.Create(filePath))
                         {
-                            Width = (int)pvTemperature.ActualWidth,
-                            Height = (int)pvTemperature.ActualHeight
-                        };
+                            var exporter = new PngExporter
+                            {
+                                Width = (int)pvTemperature.ActualWidth,
+                                Height = (int)pvTemperature.ActualHeight
+                            };
 
-                        exporter.Export(_temperaturePlotModel, stream);
-                    }
+                            exporter.Export(_temperaturePlotModel, stream);
+                        }
+                    });
 
                     MessageBox.Show($"图像已保存到:\n{filePath}", "保存成功", MessageBoxButton.OK, MessageBoxImage.Information);
 
