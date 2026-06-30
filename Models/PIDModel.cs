@@ -13,8 +13,8 @@ namespace DTE10T_WPF
         private double _out1;
         private double _out2;
         private double _pb;
-        private double _td;
-        private double _ti;
+        private int _td;
+        private int _ti;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -90,7 +90,7 @@ namespace DTE10T_WPF
             }
         }
 
-        public double Td
+        public int Td
         {
             get => _td;
             set
@@ -100,7 +100,7 @@ namespace DTE10T_WPF
             }
         }
 
-        public double Ti
+        public int Ti
         {
             get => _ti;
             set

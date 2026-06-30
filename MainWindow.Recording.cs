@@ -18,6 +18,11 @@ namespace DTE10T_WPF
         {
             try
             {
+                if(!_recordedData.Any())
+                {
+                    return;
+                }
+
                 string exportFolder = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                     "DTE10T_WPF",
@@ -32,40 +37,58 @@ namespace DTE10T_WPF
                 string filePath = Path.Combine(exportFolder, $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv");
 
                 await Task.Run(() => {
-                    using(var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                    try
                     {
-                        writer.Write("时间戳,相对时间(s)");
-                        for(int i = 0; i < 8; i++)
+                        using(var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
                         {
-                            writer.Write($",CH{i + 1}(℃)");
-                        }
-                        for(int i = 0; i < 8; i++)
-                        {
-                            writer.Write($",CH{i + 1}输出1(%)");
-                        }
-                        for(int i = 0; i < 8; i++)
-                        {
-                            writer.Write($",CH{i + 1}输出2(%)");
-                        }
-                        writer.WriteLine();
-
-                        foreach(var point in _recordedData)
-                        {
-                            writer.Write($"{point.Timestamp:yyyy-MM-dd HH:mm:ss},{point.ElapsedSeconds:F2}");
+                            writer.Write("时间戳,相对时间(s)");
                             for(int i = 0; i < 8; i++)
                             {
-                                writer.Write($",{point.CHValues[i]:F1}");
+                                writer.Write($",CH{i + 1}(℃)");
                             }
                             for(int i = 0; i < 8; i++)
                             {
-                                writer.Write($",{point.Out1Values[i]:F1}");
+                                writer.Write($",CH{i + 1}SV(℃)");
                             }
                             for(int i = 0; i < 8; i++)
                             {
-                                writer.Write($",{point.Out2Values[i]:F1}");
+                                writer.Write($",CH{i + 1}输出1(%)");
+                            }
+                            for(int i = 0; i < 8; i++)
+                            {
+                                writer.Write($",CH{i + 1}输出2(%)");
                             }
                             writer.WriteLine();
+
+                            foreach(var point in _recordedData)
+                            {
+                                writer.Write($"{point.Timestamp:yyyy-MM-dd HH:mm:ss},{point.ElapsedSeconds:F2}");
+                                for(int i = 0; i < 8; i++)
+                                {
+                                    writer.Write($",{point.CHValues[i]:F1}");
+                                }
+                                for(int i = 0; i < 8; i++)
+                                {
+                                    writer.Write($",{point.SVValues[i]:F1}");
+                                }
+                                for(int i = 0; i < 8; i++)
+                                {
+                                    writer.Write($",{point.Out1Values[i]:F1}");
+                                }
+                                for(int i = 0; i < 8; i++)
+                                {
+                                    writer.Write($",{point.Out2Values[i]:F1}");
+                                }
+                                writer.WriteLine();
+                            }
                         }
+                    }
+                    catch(Exception ex)
+                    {
+                        Application.Current.Dispatcher.Invoke(() => {
+                            Logger.Error($"[ExportCSV] 导出失败: {ex.Message}", ex);
+                            MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        });
                     }
                 });
                 Application.Current.Dispatcher.Invoke(() => {
@@ -82,6 +105,64 @@ namespace DTE10T_WPF
             }
         }
 
+        private async Task MergeTempCsvFilesAsync()
+        {
+            try
+            {
+                if(!Directory.Exists(_tempFolder))
+                {
+                    return;
+                }
+
+                string[] tempFiles = Directory.GetFiles(_tempFolder, "temp_*.csv")
+                    .OrderBy(f => f).ToArray();
+
+                if(tempFiles.Length == 0)
+                {
+                    return;
+                }
+
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                string mergedFilePath = Path.Combine(desktopPath, $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv");
+
+                await Task.Run(() => {
+                    bool headerWritten = false;
+                    using(var writer = new StreamWriter(mergedFilePath, false, System.Text.Encoding.UTF8))
+                    {
+                        foreach(string tempFile in tempFiles)
+                        {
+                            using(var reader = new StreamReader(tempFile, System.Text.Encoding.UTF8))
+                            {
+                                string line;
+                                bool isFirstLine = true;
+                                while((line = reader.ReadLine()) != null)
+                                {
+                                    if(isFirstLine)
+                                    {
+                                        isFirstLine = false;
+                                        if(!headerWritten)
+                                        {
+                                            writer.WriteLine(line);
+                                            headerWritten = true;
+                                        }
+                                        continue;
+                                    }
+                                    writer.WriteLine(line);
+                                }
+                            }
+                        }
+                    }
+                });
+                Application.Current.Dispatcher.Invoke(() => {
+                    Logger.Info($"[MergeCSV] 已合并 {tempFiles.Length} 个临时文件到桌面: {mergedFilePath}");
+                });
+            }
+            catch(Exception ex)
+            {
+                Logger.Error($"[MergeCSV] 合并临时文件失败: {ex.Message}", ex);
+            }
+        }
+
         private void RecordDataPoint()
         {
             if(!_isRecording)
@@ -91,15 +172,17 @@ namespace DTE10T_WPF
 
             double elapsedSeconds = (DateTime.Now - _recordStartTime).TotalSeconds;
             double[] chValues = new double[8];
+            double[] svValues = new double[8];
             double[] out1Values = new double[8];
             double[] out2Values = new double[8];
             for(int i = 0; i < 8; i++)
             {
                 chValues[i] = TempCards[i].PV;
+                svValues[i] = PVSVList[i].SV;
                 out1Values[i] = PVSVList[i].Out1;
                 out2Values[i] = PVSVList[i].Out2;
             }
-            _recordedData.Add(new RecordedDataPoint(DateTime.Now, elapsedSeconds, chValues, out1Values, out2Values));
+            _recordedData.Add(new RecordedDataPoint(DateTime.Now, elapsedSeconds, chValues, svValues, out1Values, out2Values));
 
             if(_recordedData.Count % AutoSaveInterval == 0)
             {
@@ -123,6 +206,10 @@ namespace DTE10T_WPF
                     }
                     for(int i = 0; i < 8; i++)
                     {
+                        writer.Write($",CH{i + 1}SV(℃)");
+                    }
+                    for(int i = 0; i < 8; i++)
+                    {
                         writer.Write($",CH{i + 1}输出1(%)");
                     }
                     for(int i = 0; i < 8; i++)
@@ -139,6 +226,10 @@ namespace DTE10T_WPF
                         for(int i = 0; i < 8; i++)
                         {
                             writer.Write($",{point.CHValues[i]:F1}");
+                        }
+                        for(int i = 0; i < 8; i++)
+                        {
+                            writer.Write($",{point.SVValues[i]:F1}");
                         }
                         for(int i = 0; i < 8; i++)
                         {
@@ -207,65 +298,7 @@ namespace DTE10T_WPF
                 Application.Current.Dispatcher.Invoke(() => {
                     txtStatus.Text = "没有记录的数据可导出";
                     txtStatus.Foreground = Brushes.Gray;
-                }); 
-            }
-        }
-
-        private async Task MergeTempCsvFilesAsync()
-        {
-            try
-            {
-                if(!Directory.Exists(_tempFolder))
-                {
-                    return;
-                }
-
-                string[] tempFiles = Directory.GetFiles(_tempFolder, "temp_*.csv")
-                    .OrderBy(f => f).ToArray();
-
-                if(tempFiles.Length == 0)
-                {
-                    return;
-                }
-
-                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                string mergedFilePath = Path.Combine(desktopPath, $"温度记录_{_recordStartTime:yyyyMMdd_HHmmss}.csv");
-
-                await Task.Run(() => {
-                    bool headerWritten = false;
-                    using(var writer = new StreamWriter(mergedFilePath, false, System.Text.Encoding.UTF8))
-                    {
-                        foreach(string tempFile in tempFiles)
-                        {
-                            using(var reader = new StreamReader(tempFile, System.Text.Encoding.UTF8))
-                            {
-                                string line;
-                                bool isFirstLine = true;
-                                while((line = reader.ReadLine()) != null)
-                                {
-                                    if(isFirstLine)
-                                    {
-                                        isFirstLine = false;
-                                        if(!headerWritten)
-                                        {
-                                            writer.WriteLine(line);
-                                            headerWritten = true;
-                                        }
-                                        continue;
-                                    }
-                                    writer.WriteLine(line);
-                                }
-                            }
-                        }
-                    }
                 });
-                Application.Current.Dispatcher.Invoke(() => {
-                    Logger.Info($"[MergeCSV] 已合并 {tempFiles.Length} 个临时文件到桌面: {mergedFilePath}");
-                });
-            }
-            catch(Exception ex)
-            {
-                Logger.Error($"[MergeCSV] 合并临时文件失败: {ex.Message}", ex);
             }
         }
     }

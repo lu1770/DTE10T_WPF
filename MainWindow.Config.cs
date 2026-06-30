@@ -108,17 +108,18 @@ namespace DTE10T_WPF
             }
         }
 
-        private async void ModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { await SaveConfigAsync(); }
+        private async void ModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        { await SaveConfigAsync(); }
 
         private async Task SaveConfigAsync()
         {
-            if(_isConfigSaving)
-            {
-                return;
-            }
-
             try
             {
+                if(_isConfigSaving)
+                {
+                    return;
+                }
+
                 _isConfigSaving = true;
 
                 AppConfig config = new AppConfig
@@ -161,10 +162,22 @@ namespace DTE10T_WPF
 
         private void SetupConfigChangeListeners()
         {
-            txtStationCode.LostFocus += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
-            cmbBaudRate.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
-            cmbComPort.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
-            cmbProtocol.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected) await ReconnectAsync(); };
+            txtStationCode.LostFocus += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+                                                                                        {
+                                                                                            await ReconnectAsync();
+                                                                                        } };
+            cmbBaudRate.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+                                                                                            {
+                                                                                                await ReconnectAsync();
+                                                                                            } };
+            cmbComPort.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+                                                                                           {
+                                                                                               await ReconnectAsync();
+                                                                                           } };
+            cmbProtocol.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+                                                                                            {
+                                                                                                await ReconnectAsync();
+                                                                                            } };
 
             PVSVList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
             PIDList.CollectionChanged += async (sender, e) => await SaveConfigAsync();

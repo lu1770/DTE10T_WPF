@@ -1,4 +1,3 @@
-using DTE10T_WPF.Config;
 using DTE10T_WPF.Services;
 using System;
 using System.Collections.Generic;
@@ -137,103 +136,6 @@ namespace DTE10T_WPF
                 {
                     btnRefresh.IsEnabled = true;
                 }
-            }
-        }
-
-        private async Task ReconnectAsync()
-        {
-            if(!_isConnected)
-            {
-                return;
-            }
-
-            txtStatus.Text = "配置变更，正在重连...";
-            txtStatus.Foreground = Brushes.Orange;
-            ledCOM.Fill = Brushes.Yellow;
-
-            bool wasConnected = _isConnected;
-
-            try
-            {
-                _isConnected = false;
-                _pollTimer?.Dispose();
-                _pollTimer = null;
-
-                try
-                {
-                    _modbus?.Disconnect();
-                }
-                catch(Exception ex)
-                {
-                    Logger.Error($"[Reconnect] 断开连接异常: {ex.Message}", ex);
-                }
-                finally
-                {
-                    _modbus = null;
-                }
-
-                string port = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1";
-                int baudRate = int.Parse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"));
-                int slaveId = int.Parse(txtStationCode.Text);
-                string parity = "Even";
-                string stopBits = "1";
-                string protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU";
-
-                _modbus = new ModbusService(
-                    slaveId: slaveId,
-                    comPort: port,
-                    baudRate: baudRate,
-                    parity: parity,
-                    dataBits: 8,
-                    stopBits: stopBits,
-                    protocol: protocol
-                );
-
-                bool success = await _modbus.ConnectAsync();
-
-                if(success)
-                {
-                    _isConnected = true;
-                    txtStatus.Text = "已连接";
-                    txtStatus.Foreground = Brushes.Green;
-                    btnConnect.IsEnabled = false;
-                    btnDisconnect.IsEnabled = true;
-                    btnRefresh.IsEnabled = true;
-                    txtConnStatus.Text = "● 已连接";
-                    txtConnStatus.Foreground = Brushes.Green;
-
-                    string baud = cmbBaudRate.Text;
-                    txtDeviceInfo.Text = $"| 温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
-
-                    ledPWR.Fill = Brushes.LimeGreen;
-                    ledCOM.Fill = Brushes.Green;
-
-                    await PollAllDataAsync();
-
-                    var ms = 1000;
-                    _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
-                }
-                else
-                {
-                    txtStatus.Text = "重连失败: 无法建立连接，请检查串口设置";
-                    txtStatus.Foreground = Brushes.Red;
-                    btnConnect.IsEnabled = true;
-                    btnDisconnect.IsEnabled = false;
-                    btnRefresh.IsEnabled = false;
-                    ledCOM.Fill = Brushes.Red;
-                    Logger.Error("[Reconnect] 无法重新连接到温控器");
-                }
-            }
-            catch(Exception ex)
-            {
-                string errorMessage = GetConnectionErrorMessage(ex);
-                txtStatus.Text = $"重连失败: {errorMessage}";
-                txtStatus.Foreground = Brushes.Red;
-                btnConnect.IsEnabled = true;
-                btnDisconnect.IsEnabled = false;
-                btnRefresh.IsEnabled = false;
-                ledCOM.Fill = Brushes.Red;
-                Logger.Error($"[Reconnect] 重连异常: {ex.Message}", ex);
             }
         }
 
@@ -452,6 +354,63 @@ namespace DTE10T_WPF
             stepStart.Stop();
         }
 
+        // ========== 功能选择参数 (三) 轮询 ==========
+        private async Task PollFunctionSelectAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                // 输入传感器类型 H10A0~H10A7
+                ushort sensorVal = await _modbus!.ReadHoldingRegisterAsync(0x10A0 + i);
+                FunctionSelectList[i].SensorType = sensorVal < SensorTypeNames.Length
+                    ? SensorTypeNames[sensorVal] : $"未知({sensorVal})";
+
+                // OUT1 输出功能 H10A8~H10AF
+                ushort out1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10A8 + i);
+                FunctionSelectList[i].Out1Function = out1Ctrl < OutFunctionNames.Length
+                    ? OutFunctionNames[out1Ctrl] : $"未知({out1Ctrl})";
+
+                // SUB1 输出功能 H10B0~H10B7 (相当于 OUT2)
+                ushort sub1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10B0 + i);
+                FunctionSelectList[i].Sub1Function = sub1Ctrl < OutFunctionNames.Length
+                    ? OutFunctionNames[sub1Ctrl] : $"未知({sub1Ctrl})";
+
+                // 控制方式 H10B8~H10BF
+                ushort ctrlMode = await _modbus!.ReadHoldingRegisterAsync(0x10B8 + i);
+                FunctionSelectList[i].ControlMode = ctrlMode < ControlModeNames.Length
+                    ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
+
+                // 警报一输出模式 H10C0~H10C7
+                ushort alarm1Mode = await _modbus!.ReadHoldingRegisterAsync(0x10C0 + i);
+                FunctionSelectList[i].Alarm1Mode = alarm1Mode < AlarmModeNames.Length
+                    ? AlarmModeNames[alarm1Mode] : $"未知({alarm1Mode})";
+
+                // 警报二输出模式 H10C8~H10CF
+                ushort alarm2Mode = await _modbus!.ReadHoldingRegisterAsync(0x10C8 + i);
+                FunctionSelectList[i].Alarm2Mode = alarm2Mode < AlarmModeNames.Length
+                    ? AlarmModeNames[alarm2Mode] : $"未知({alarm2Mode})";
+
+                // 加热/冷却控制周期 H10D0~H10D7
+                ushort ctrlCycle = await _modbus!.ReadHoldingRegisterAsync(0x10D0 + i);
+                FunctionSelectList[i].ControlCycle = ctrlCycle;
+
+                // 控制执行/停止设定 H10D8~H10DF
+                ushort ctrlExec = await _modbus!.ReadHoldingRegisterAsync(0x10D8 + i);
+                FunctionSelectList[i].ControlExecStatus = ctrlExec < ControlExecNames.Length
+                    ? ControlExecNames[ctrlExec] : $"未知({ctrlExec})";
+
+                // PID 自动调谐状态 H10E0~H10E7
+                ushort atStatus = await _modbus!.ReadHoldingRegisterAsync(0x10E0 + i);
+                FunctionSelectList[i].ATEnabled = atStatus == 1;
+
+                // 设定正负比例输出 H10E8~H10EF
+                ushort propSign = await _modbus!.ReadHoldingRegisterAsync(0x10E8 + i);
+                FunctionSelectList[i].ProportionSign = propSign < ProportionSignNames.Length
+                    ? ProportionSignNames[propSign] : $"未知({propSign})";
+            }
+            stepStart.Stop();
+        }
+
         private async Task PollHotRunnerParamsAsync()
         {
             var stepStart = Stopwatch.StartNew();
@@ -533,10 +492,13 @@ namespace DTE10T_WPF
                 PIDList[i].Pb = Math.Round(pbValue * 0.1, 1);
 
                 ushort tiValue = await _modbus!.ReadHoldingRegisterAsync(0x1030 + i);
-                PIDList[i].Ti = Math.Round(tiValue * 0.0, 0);
+                //Logger.Debug($"tiValue: {tiValue:X4}");
+                // 2026-06-30 15:54:37,350 [1] DEBUG DTE10T_WPF.Logger - tiValue: 006B
+                PIDList[i].Ti = _modbus!.ParseInt(tiValue, 1);
 
                 ushort tdValue = await _modbus!.ReadHoldingRegisterAsync(0x1038 + i);
-                PIDList[i].Td = Math.Round(tdValue * 0.0, 0);
+                //Logger.Debug($"tdValue: {tdValue:X4}");
+                PIDList[i].Td = _modbus!.ParseInt(tdValue, 1);
 
                 ushort intValue = await _modbus!.ReadHoldingRegisterAsync(0x1040 + i);
                 PIDList[i].Integral = Math.Round(intValue * 0.1, 1);
@@ -585,7 +547,7 @@ namespace DTE10T_WPF
                     {
                         double tempDiff = rawPV - _lastPVValues[i];
                         double ratePerMinute = (tempDiff / timeDiff.TotalMilliseconds) * 60 * 1000;
-                        Logger.Debug($"[步骤2] 温度变化速率: {ratePerMinute}℃/min ({tempDiff}℃ / {timeDiff.TotalMilliseconds}ms)");
+                        //Logger.Debug($"[步骤2] 温度变化速率: {ratePerMinute}℃/min ({tempDiff}℃ / {timeDiff.TotalMilliseconds}ms)");
                         TempCards[i].RateOfChange = Math.Round(ratePerMinute, 1);
 
                         _lastPVValues[i] = rawPV;
@@ -646,61 +608,101 @@ namespace DTE10T_WPF
             stepStart.Stop();
         }
 
-        // ========== 功能选择参数 (三) 轮询 ==========
-        private async Task PollFunctionSelectAsync()
+        private async Task ReconnectAsync()
         {
-            var stepStart = Stopwatch.StartNew();
-            for(int i = 0; i < 8; i++)
+            if(!_isConnected)
             {
-                // 输入传感器类型 H10A0~H10A7
-                ushort sensorVal = await _modbus!.ReadHoldingRegisterAsync(0x10A0 + i);
-                FunctionSelectList[i].SensorType = sensorVal < SensorTypeNames.Length
-                    ? SensorTypeNames[sensorVal] : $"未知({sensorVal})";
-
-                // OUT1 输出功能 H10A8~H10AF
-                ushort out1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10A8 + i);
-                FunctionSelectList[i].Out1Function = out1Ctrl < OutFunctionNames.Length
-                    ? OutFunctionNames[out1Ctrl] : $"未知({out1Ctrl})";
-
-                // SUB1 输出功能 H10B0~H10B7 (相当于 OUT2)
-                ushort sub1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10B0 + i);
-                FunctionSelectList[i].Sub1Function = sub1Ctrl < OutFunctionNames.Length
-                    ? OutFunctionNames[sub1Ctrl] : $"未知({sub1Ctrl})";
-
-                // 控制方式 H10B8~H10BF
-                ushort ctrlMode = await _modbus!.ReadHoldingRegisterAsync(0x10B8 + i);
-                FunctionSelectList[i].ControlMode = ctrlMode < ControlModeNames.Length
-                    ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
-
-                // 警报一输出模式 H10C0~H10C7
-                ushort alarm1Mode = await _modbus!.ReadHoldingRegisterAsync(0x10C0 + i);
-                FunctionSelectList[i].Alarm1Mode = alarm1Mode < AlarmModeNames.Length
-                    ? AlarmModeNames[alarm1Mode] : $"未知({alarm1Mode})";
-
-                // 警报二输出模式 H10C8~H10CF
-                ushort alarm2Mode = await _modbus!.ReadHoldingRegisterAsync(0x10C8 + i);
-                FunctionSelectList[i].Alarm2Mode = alarm2Mode < AlarmModeNames.Length
-                    ? AlarmModeNames[alarm2Mode] : $"未知({alarm2Mode})";
-
-                // 加热/冷却控制周期 H10D0~H10D7
-                ushort ctrlCycle = await _modbus!.ReadHoldingRegisterAsync(0x10D0 + i);
-                FunctionSelectList[i].ControlCycle = ctrlCycle;
-
-                // 控制执行/停止设定 H10D8~H10DF
-                ushort ctrlExec = await _modbus!.ReadHoldingRegisterAsync(0x10D8 + i);
-                FunctionSelectList[i].ControlExecStatus = ctrlExec < ControlExecNames.Length
-                    ? ControlExecNames[ctrlExec] : $"未知({ctrlExec})";
-
-                // PID 自动调谐状态 H10E0~H10E7
-                ushort atStatus = await _modbus!.ReadHoldingRegisterAsync(0x10E0 + i);
-                FunctionSelectList[i].ATEnabled = atStatus == 1;
-
-                // 设定正负比例输出 H10E8~H10EF
-                ushort propSign = await _modbus!.ReadHoldingRegisterAsync(0x10E8 + i);
-                FunctionSelectList[i].ProportionSign = propSign < ProportionSignNames.Length
-                    ? ProportionSignNames[propSign] : $"未知({propSign})";
+                return;
             }
-            stepStart.Stop();
+
+            txtStatus.Text = "配置变更，正在重连...";
+            txtStatus.Foreground = Brushes.Orange;
+            ledCOM.Fill = Brushes.Yellow;
+
+            bool wasConnected = _isConnected;
+
+            try
+            {
+                _isConnected = false;
+                _pollTimer?.Dispose();
+                _pollTimer = null;
+
+                try
+                {
+                    _modbus?.Disconnect();
+                }
+                catch(Exception ex)
+                {
+                    Logger.Error($"[Reconnect] 断开连接异常: {ex.Message}", ex);
+                }
+                finally
+                {
+                    _modbus = null;
+                }
+
+                string port = (cmbComPort.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "COM1";
+                int baudRate = int.Parse(((cmbBaudRate.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9600"));
+                int slaveId = int.Parse(txtStationCode.Text);
+                string parity = "Even";
+                string stopBits = "1";
+                string protocol = (cmbProtocol.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RTU";
+
+                _modbus = new ModbusService(
+                    slaveId: slaveId,
+                    comPort: port,
+                    baudRate: baudRate,
+                    parity: parity,
+                    dataBits: 8,
+                    stopBits: stopBits,
+                    protocol: protocol
+                );
+
+                bool success = await _modbus.ConnectAsync();
+
+                if(success)
+                {
+                    _isConnected = true;
+                    txtStatus.Text = "已连接";
+                    txtStatus.Foreground = Brushes.Green;
+                    btnConnect.IsEnabled = false;
+                    btnDisconnect.IsEnabled = true;
+                    btnRefresh.IsEnabled = true;
+                    txtConnStatus.Text = "● 已连接";
+                    txtConnStatus.Foreground = Brushes.Green;
+
+                    string baud = cmbBaudRate.Text;
+                    txtDeviceInfo.Text = $"| 温控器1 | SlaveID: {slaveId} | {port} | {protocol} | {baud}bps";
+
+                    ledPWR.Fill = Brushes.LimeGreen;
+                    ledCOM.Fill = Brushes.Green;
+
+                    await PollAllDataAsync();
+
+                    var ms = 1000;
+                    _pollTimer = new System.Threading.Timer(PollCallback, null, ms, ms);
+                }
+                else
+                {
+                    txtStatus.Text = "重连失败: 无法建立连接，请检查串口设置";
+                    txtStatus.Foreground = Brushes.Red;
+                    btnConnect.IsEnabled = true;
+                    btnDisconnect.IsEnabled = false;
+                    btnRefresh.IsEnabled = false;
+                    ledCOM.Fill = Brushes.Red;
+                    Logger.Error("[Reconnect] 无法重新连接到温控器");
+                }
+            }
+            catch(Exception ex)
+            {
+                string errorMessage = GetConnectionErrorMessage(ex);
+                txtStatus.Text = $"重连失败: {errorMessage}";
+                txtStatus.Foreground = Brushes.Red;
+                btnConnect.IsEnabled = true;
+                btnDisconnect.IsEnabled = false;
+                btnRefresh.IsEnabled = false;
+                ledCOM.Fill = Brushes.Red;
+                Logger.Error($"[Reconnect] 重连异常: {ex.Message}", ex);
+            }
         }
 
         private void UpdateCommParamsUI(Dictionary<string, ushort> commParams)

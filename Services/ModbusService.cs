@@ -518,7 +518,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1030,
                 HexAddress = 0x1106,
                 Description = "CH1 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -528,7 +528,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1031,
                 HexAddress = 0x1206,
                 Description = "CH2 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -538,7 +538,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1032,
                 HexAddress = 0x1306,
                 Description = "CH3 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -548,7 +548,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1033,
                 HexAddress = 0x1406,
                 Description = "CH4 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -558,7 +558,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1034,
                 HexAddress = 0x1506,
                 Description = "CH5 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -568,7 +568,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1035,
                 HexAddress = 0x1606,
                 Description = "CH6 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -578,7 +578,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1036,
                 HexAddress = 0x1706,
                 Description = "CH7 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -588,7 +588,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1037,
                 HexAddress = 0x1806,
                 Description = "CH8 Ti积分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -600,7 +600,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1038,
                 HexAddress = 0x1107,
                 Description = "CH1 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -610,7 +610,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x1039,
                 HexAddress = 0x1207,
                 Description = "CH2 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -620,7 +620,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x103A,
                 HexAddress = 0x1307,
                 Description = "CH3 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -630,7 +630,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x103B,
                 HexAddress = 0x1407,
                 Description = "CH4 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -640,7 +640,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x103C,
                 HexAddress = 0x1507,
                 Description = "CH5 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -650,7 +650,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x103D,
                 HexAddress = 0x1607,
                 Description = "CH6 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -660,7 +660,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x103E,
                 HexAddress = 0x1707,
                 Description = "CH7 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -670,7 +670,7 @@ namespace DTE10T_WPF.Services
                 Address = 0x103F,
                 HexAddress = 0x1807,
                 Description = "CH8 Td微分时间",
-                DataType = "FLOAT32",
+                DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "s"
             },
@@ -2782,53 +2782,6 @@ namespace DTE10T_WPF.Services
             };
         }
 
-        ///<summary>
-        /// 将 ushort 数组解析为 double 数组 (每 2 个 ushort = 1 个 FLOAT32)</summary>
-        private static double[] ParseFloats(ushort[] raw, int count)
-        {
-            var result = new double[count];
-            for(int i = 0; i < count; i++)
-            {
-                result[i] = ParseFloatWithScaling(raw[i * 2], raw[i * 2 + 1], 1.0);
-            }
-            return result;
-        }
-
-        // ========== 工具方法 ==========
-
-        ///<summary>
-        /// 将 2 个 ushort (大端 ABCD) 转为 float, 再乘以缩放因子</summary>
-        private static double ParseFloatWithScaling(ushort high, ushort low, double scaling)
-        {
-            byte[] bytes = new byte[4];
-            // Modbus返回大端序：high=AB, low=CD → ABCD
-            bytes[0] = (byte)(high >> 8);
-            bytes[1] = (byte)(high & 0xFF);
-            bytes[2] = (byte)(low >> 8);
-            bytes[3] = (byte)(low & 0xFF);
-            // Windows上BitConverter.ToSingle期望小端序，需要反转
-            if(BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(bytes);
-            }
-            float value = BitConverter.ToSingle(bytes, 0);
-            return Math.Round(value * scaling, 2);
-        }
-
-        ///<summary>
-        /// 将 ushort 数组解析为 double 数组 (每 1 个 ushort = 1 个 INT16)</summary>
-        private static double[] ParseInt16s(ushort[] raw, int count, double scaling)
-        {
-            var result = new double[count];
-            for(int i = 0; i < count; i++)
-            {
-                // 将 ushort 转换为有符号的 short
-                short signedValue = (short)raw[i];
-                result[i] = Math.Round(signedValue * scaling, 2);
-            }
-            return result;
-        }
-
         private static Parity ParseParity(string parity)
         {
             return parity?.ToLower() switch
@@ -2855,6 +2808,8 @@ namespace DTE10T_WPF.Services
                 throw new InvalidOperationException("Modbus 未连接，请先调用 ConnectAsync()");
             }
         }
+
+        internal int ParseInt(ushort tiValue, double v) { return (int)Math.Round(tiValue * v); }
 
         ///<summary>
         /// 读取错误码 (H1000~H1007 在错误时返回 H8001~H8003)</summary>
@@ -2946,6 +2901,53 @@ namespace DTE10T_WPF.Services
         ///<summary>
         /// 恢复出厂值 (写入 0x1357 到 H10F2)</summary>
         public async Task<bool> FactoryResetAsync() { return await WriteSingleRegisterAsync(0x10F2, 0x1357); }
+
+        ///<summary>
+        /// 将 ushort 数组解析为 double 数组 (每 2 个 ushort = 1 个 FLOAT32)</summary>
+        public static double[] ParseFloats(ushort[] raw, int count)
+        {
+            var result = new double[count];
+            for(int i = 0; i < count; i++)
+            {
+                result[i] = ParseFloatWithScaling(raw[i * 2], raw[i * 2 + 1], 1.0);
+            }
+            return result;
+        }
+
+        // ========== 工具方法 ==========
+
+        ///<summary>
+        /// 将 2 个 ushort (大端 ABCD) 转为 float, 再乘以缩放因子</summary>
+        public static double ParseFloatWithScaling(ushort high, ushort low, double scaling)
+        {
+            byte[] bytes = new byte[4];
+            // Modbus返回大端序：high=AB, low=CD → ABCD
+            bytes[0] = (byte)(high >> 8);
+            bytes[1] = (byte)(high & 0xFF);
+            bytes[2] = (byte)(low >> 8);
+            bytes[3] = (byte)(low & 0xFF);
+            // Windows上BitConverter.ToSingle期望小端序，需要反转
+            if(BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
+            float value = BitConverter.ToSingle(bytes, 0);
+            return Math.Round(value * scaling, 2);
+        }
+
+        ///<summary>
+        /// 将 ushort 数组解析为 double 数组 (每 1 个 ushort = 1 个 INT16)</summary>
+        public static double[] ParseInt16s(ushort[] raw, int count, double scaling)
+        {
+            var result = new double[count];
+            for(int i = 0; i < count; i++)
+            {
+                // 将 ushort 转换为有符号的 short
+                short signedValue = (short)raw[i];
+                result[i] = Math.Round(signedValue * scaling, 2);
+            }
+            return result;
+        }
 
         ///<summary>
         /// 读取警报上下限值</summary>
@@ -3058,25 +3060,12 @@ namespace DTE10T_WPF.Services
         }
 
         ///<summary>
-        /// 设置传感器类型 (0~14)</summary>
-        public async Task<bool> WriteSensorTypeAsync(int channel, int sensorType)
-        {
-            int addr = 0x10A0 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)sensorType);
-        }
-
-        ///<summary>
-        /// 设置正负比例输出 (0=正, 1=负/斜率)</summary>
-        public async Task<bool> WriteProportionSignAsync(int channel, int sign)
-        {
-            int addr = 0x10E8 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)sign);
-        }
-
-        ///<summary>
         /// 设置通道禁能/使能 (H10F6, Bit0=CH1 ... Bit7=CH8)</summary>
-        public async Task<bool> SetChannelDisableAsync(ushort bitmask)
-        { return await WriteSingleRegisterAsync(0x10F6, bitmask); }
+        public async Task<bool> SetChannelDisableAsync(int channel, bool disabled)
+        {
+            ushort mask = (ushort)(disabled ? (1 << channel) : 0);
+            return await WriteSingleRegisterAsync(0x10F6, mask);
+        }
 
         ///<summary>
         /// 执行控制 (1) / 停止 (0) — H10D8~H10DF</summary>
@@ -3173,6 +3162,12 @@ namespace DTE10T_WPF.Services
             return await WriteSingleRegisterAsync(addr, value);
         }
 
+        public async Task<bool> WriteControlCycleAsync(int channel, int value)
+        {
+            int addr = 0x10D0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
         public async Task<bool> WriteCTAdjustAsync(int channel, double value)
         {
             int addr = 0x19A8 + channel;
@@ -3226,6 +3221,7 @@ namespace DTE10T_WPF.Services
             return await Task.Run(() => {
                        try
                        {
+                           Logger.Info($"[Modbus] 批量写入 @{startAddress:X4}: {string.Join(", ", values)}");
                            _master!.WriteMultipleRegisters(_slaveId, (ushort)startAddress, values);
                            return true;
                        }
@@ -3255,12 +3251,6 @@ namespace DTE10T_WPF.Services
             return await WriteSingleRegisterAsync(addr, (ushort)value);
         }
 
-        public async Task<bool> WriteControlCycleAsync(int channel, int value)
-        {
-            int addr = 0x10D0 + channel;
-            return await WriteSingleRegisterAsync(addr, (ushort)value);
-        }
-
         ///<summary>
         /// 写入输出1量 (手动模式) — H1070 + channel</summary>
         public async Task<bool> WriteOutput1Async(int channel, double value)
@@ -3282,14 +3272,14 @@ namespace DTE10T_WPF.Services
         public async Task<bool> WritePbAsync(int channel, double value)
         {
             int addr = 0x1028 + channel;
-            ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(addr, regs);
+            ushort reg = (ushort)(value*10);
+            return await WriteSingleRegisterAsync(addr, reg);
         }
 
         ///<summary>
         /// 写入 PID 参数 (Pb, Ti, Td — 各 FLOAT32, 共 6 寄存器)
         /// 使用按功能顺序编码地址: H1028 + channel*0x100</summary>
-        public async Task<bool> WritePIDAsync(int channel, double pb, double ti, double td)
+        public async Task<bool> WritePIDAsync(int channel, double pb, int ti, int td)
         {
             int baseAddr = 0x1028 + channel * 0x100;
             var data = new List<ushort>();
@@ -3297,6 +3287,14 @@ namespace DTE10T_WPF.Services
             data.AddRange(FloatToUshortArray((float)ti));
             data.AddRange(FloatToUshortArray((float)td));
             return await WriteMultipleRegistersAsync(baseAddr, data.ToArray());
+        }
+
+        ///<summary>
+        /// 设置正负比例输出 (0=正, 1=负/斜率)</summary>
+        public async Task<bool> WriteProportionSignAsync(int channel, int sign)
+        {
+            int addr = 0x10E8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)sign);
         }
 
         public async Task<bool> WriteRangeHighAsync(int channel, double value)
@@ -3314,6 +3312,14 @@ namespace DTE10T_WPF.Services
         }
 
         ///<summary>
+        /// 设置传感器类型 (0~14)</summary>
+        public async Task<bool> WriteSensorTypeAsync(int channel, int sensorType)
+        {
+            int addr = 0x10A0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)sensorType);
+        }
+
+        ///<summary>
         /// 写入单个保持寄存器 (功能码 0x06)</summary>
         public async Task<bool> WriteSingleRegisterAsync(int address, ushort value)
         {
@@ -3321,8 +3327,8 @@ namespace DTE10T_WPF.Services
             return await Task.Run(() => {
                        try
                        {
+                           Logger.Info($"[Modbus] 写入 @{address:X4}: {value}");
                            _master!.WriteSingleRegister(_slaveId, (ushort)address, value);
-                           Logger.Info($"[Modbus] 写入成功 @{address:X4}: {value}");
                            return true;
                        }
                        catch(Exception ex)
@@ -3349,18 +3355,18 @@ namespace DTE10T_WPF.Services
             return await WriteSingleRegisterAsync(addr, regValue);
         }
 
-        public async Task<bool> WriteTdAsync(int channel, double value)
+        public async Task<bool> WriteTdAsync(int channel, int value)
         {
             int addr = 0x1038 + channel;
-            ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(addr, regs);
+            ushort regValue = (ushort)(value);
+            return await WriteSingleRegisterAsync(addr, regValue);
         }
 
-        public async Task<bool> WriteTiAsync(int channel, double value)
+        public async Task<bool> WriteTiAsync(int channel, int value)
         {
             int addr = 0x1030 + channel;
-            ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(addr, regs);
+            ushort regValue = (ushort)(value);
+            return await WriteSingleRegisterAsync(addr, regValue);
         }
 
         public bool IsConnected => _isConnected;

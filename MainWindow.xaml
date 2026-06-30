@@ -665,62 +665,140 @@
 
             <!--  Tab3: PID 参数  -->
             <TabItem Header="🔧 PID 参数">
-                <DataGrid
-                    x:Name="dgPID"
-                    AlternatingRowBackground="{StaticResource RowEvenBrush}"
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    CellEditEnding="DgPID_CellEditEnding"
-                    GridLinesVisibility="All"
-                    HeadersVisibility="Column"
-                    RowBackground="{StaticResource RowOddBrush}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn
-                            Width="60"
-                            Binding="{Binding Channel}"
-                            Header="通道"
-                            IsReadOnly="True" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding ControlMode}"
-                            Header="控制方式"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding Pb, StringFormat=F1}"
-                            Header="Pb 比例带"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding Ti, StringFormat=F0}"
-                            Header="Ti 积分 (s)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding Td, StringFormat=F0}"
-                            Header="Td 微分 (s)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding Integral, StringFormat=F1}"
-                            Header="积分量 (%)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding Out1, StringFormat=F1}"
-                            Header="输出1量 (%)"
-                            IsReadOnly="False" />
-                        <DataGridTextColumn
-                            Width="100"
-                            Binding="{Binding Out2, StringFormat=F1}"
-                            Header="输出2量 (%)"
-                            IsReadOnly="False" />
-                        <DataGridCheckBoxColumn
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel
+                        Grid.Row="0"
+                        Margin="8,4"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            FontWeight="Bold"
+                            Text="设置全部:" />
+                        <TextBox
+                            x:Name="txtSetAllPb"
                             Width="80"
-                            Binding="{Binding ATEnabled}"
-                            Header="AT自整定" />
-                    </DataGrid.Columns>
-                </DataGrid>
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="Pb 比例带" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllPb_Click"
+                            Content="Pb全部" />
+                        <TextBox
+                            x:Name="txtSetAllTi"
+                            Width="80"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="Ti 积分时间" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllTi_Click"
+                            Content="Ti全部" />
+                        <TextBox
+                            x:Name="txtSetAllTd"
+                            Width="80"
+                            Margin="0,0,4,0"
+                            Padding="2"
+                            TextAlignment="Center"
+                            ToolTip="Td 微分时间" />
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllTd_Click"
+                            Content="Td全部" />
+                        <ComboBox
+                            x:Name="cmbSetAllPIDControlMode"
+                            Width="100"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="控制方式">
+                            <ComboBoxItem Content="PID" />
+                            <ComboBoxItem Content="ON-OFF" />
+                            <ComboBoxItem Content="手动" />
+                            <ComboBoxItem Content="可程序PID" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllPIDControlMode_Click"
+                            Content="方式全部" />
+                        <CheckBox
+                            x:Name="chkSetAllPIDAT"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            Content="AT自整定" />
+                        <Button
+                            Width="70"
+                            Click="BtnSetAllPIDAT_Click"
+                            Content="AT全部" />
+                    </StackPanel>
+                    <DataGrid
+                        x:Name="dgPID"
+                        Grid.Row="1"
+                        AlternatingRowBackground="{StaticResource RowEvenBrush}"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CellEditEnding="DgPID_CellEditEnding"
+                        GridLinesVisibility="All"
+                        HeadersVisibility="Column"
+                        RowBackground="{StaticResource RowOddBrush}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="60"
+                                Binding="{Binding Channel}"
+                                Header="通道"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding ControlMode}"
+                                Header="控制方式"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Pb, StringFormat=F1}"
+                                Header="Pb 比例带"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Ti, StringFormat=F0}"
+                                Header="Ti 积分 (s)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Td, StringFormat=F0}"
+                                Header="Td 微分 (s)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Integral, StringFormat=F1}"
+                                Header="积分量 (%)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Out1, StringFormat=F1}"
+                                Header="输出1量 (%)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Out2, StringFormat=F1}"
+                                Header="输出2量 (%)"
+                                IsReadOnly="False" />
+                            <DataGridCheckBoxColumn
+                                Width="80"
+                                Binding="{Binding ATEnabled}"
+                                Header="AT自整定" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </TabItem>
 
             <!--  Tab4: 警报设定  -->

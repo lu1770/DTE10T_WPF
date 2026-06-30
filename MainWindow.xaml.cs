@@ -1,4 +1,3 @@
-using DTE10T_WPF.Config;
 using DTE10T_WPF.Services;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -322,19 +321,11 @@ namespace DTE10T_WPF
                     {
                         item.Alarm1Mode = alarmMode;
                         item.Alarm2Mode = alarmMode;
+                        await _modbus.SetAlarm1ModeAsync(GetChannelIndex(item.Channel), modeIndex);
+                        await _modbus.SetAlarm2ModeAsync(GetChannelIndex(item.Channel), modeIndex);
                     }
                     txtStatus.Text = "已设置全部警报模式";
                     txtStatus.Foreground = Brushes.Green;
-
-                    if(_modbus != null && _isConnected)
-                    {
-                        for(int i = 0; i < 8; i++)
-                        {
-                            await _modbus.SetAlarm1ModeAsync(i, modeIndex);
-                            await _modbus.SetAlarm2ModeAsync(i, modeIndex);
-                        }
-                        txtStatus.Text = "已写入全部警报模式";
-                    }
                 }
             }
             else
@@ -389,18 +380,12 @@ namespace DTE10T_WPF
                     foreach(var item in FunctionSelectList)
                     {
                         item.ControlExecStatus = execStatus;
+                        await _modbus.SetControlExecAsync(GetChannelIndex(item.Channel), statusIndex);
                     }
-                    txtStatus.Text = "已设置全部执行状态";
-                    txtStatus.Foreground = Brushes.Green;
-
-                    if(_modbus != null && _isConnected)
-                    {
-                        for(int i = 0; i < 8; i++)
-                        {
-                            await _modbus.SetControlExecAsync(i, statusIndex);
-                        }
-                        txtStatus.Text = "已写入全部执行状态";
-                    }
+                    Application.Current.Dispatcher.Invoke(() => {
+                        txtStatus.Text = "已设置全部执行状态";
+                        txtStatus.Foreground = Brushes.Green;
+                    });
                 }
             }
             else
@@ -438,13 +423,24 @@ namespace DTE10T_WPF
         /// 设置全部通道使能</summary>
         private void BtnSetAllEnabled_Click(object sender, RoutedEventArgs e)
         {
-            bool enabled = chkSetAllEnabled.IsChecked ?? false;
-            foreach(var item in PVSVList)
+            if(_modbus == null || !_isConnected)
             {
-                item.IsEnabled = enabled;
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            txtStatus.Text = enabled ? "已启用全部通道" : "已禁用全部通道";
-            txtStatus.Foreground = Brushes.Green;
+            Task.Run(async () =>
+            {
+                bool enabled = chkSetAllEnabled.IsChecked ?? false;
+                foreach(var item in PVSVList)
+                {
+                    item.IsEnabled = enabled;
+                    await _modbus.SetChannelDisableAsync(GetChannelIndex(item.Channel), !enabled);
+                }
+                Application.Current.Dispatcher.Invoke(() => {
+                    txtStatus.Text = enabled ? "已启用全部通道" : "已禁用全部通道";
+                    txtStatus.Foreground = Brushes.Green;
+                });
+            });
         }
 
         ///<summary>
@@ -822,6 +818,132 @@ namespace DTE10T_WPF
             {
                 MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        private async void BtnSetAllPb_Click(object sender, RoutedEventArgs e)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if(double.TryParse(txtSetAllPb.Text, out double value))
+            {
+                foreach(var item in PIDList)
+                {
+                    item.Pb = value;
+                    await _modbus.WritePbAsync(GetChannelIndex(item.Channel), value);
+                }
+                txtStatus.Text = "已设置全部 Pb 比例带";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async void BtnSetAllTi_Click(object sender, RoutedEventArgs e)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if(int.TryParse(txtSetAllTi.Text, out int value))
+            {
+                foreach(var item in PIDList)
+                {
+                    item.Ti = value;
+                    await _modbus.WriteTiAsync(GetChannelIndex(item.Channel), value);
+                }
+                txtStatus.Text = "已设置全部 Ti 积分时间";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async void BtnSetAllTd_Click(object sender, RoutedEventArgs e)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if(int.TryParse(txtSetAllTd.Text, out int value))
+            {
+                foreach(var item in PIDList)
+                {
+                    item.Td = value;
+                    await _modbus.WriteTdAsync(GetChannelIndex(item.Channel), value);
+                }
+                txtStatus.Text = "已设置全部 Td 微分时间";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async void BtnSetAllPIDControlMode_Click(object sender, RoutedEventArgs e)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string? controlMode = (cmbSetAllPIDControlMode.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(controlMode))
+            {
+                int modeIndex = Array.IndexOf(ControlModeNames, controlMode);
+                if(modeIndex >= 0)
+                {
+                    foreach(var item in PIDList)
+                    {
+                        item.ControlMode = controlMode;
+                        await _modbus.SetControlModeAsync(GetChannelIndex(item.Channel), modeIndex);
+                    }
+                    txtStatus.Text = "已设置全部控制方式";
+                    txtStatus.Foreground = Brushes.Green;
+                }
+            }
+            else
+            {
+                MessageBox.Show("请选择有效的控制方式", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async void BtnSetAllPIDAT_Click(object sender, RoutedEventArgs e)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            bool atEnabled = chkSetAllPIDAT.IsChecked ?? false;
+            foreach(var item in PIDList)
+            {
+                item.ATEnabled = atEnabled;
+                if(atEnabled)
+                {
+                    await _modbus.StartATAsync(GetChannelIndex(item.Channel));
+                }
+                else
+                {
+                    await _modbus.StopATAsync(GetChannelIndex(item.Channel));
+                }
+            }
+            txtStatus.Text = atEnabled ? "已启动全部 AT 自整定" : "已停止全部 AT 自整定";
+            txtStatus.Foreground = Brushes.Green;
         }
 
         private void ToggleChartPause()

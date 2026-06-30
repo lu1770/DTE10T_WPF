@@ -5,11 +5,12 @@ namespace DTE10T_WPF
 {
     public class RecordedDataPoint
     {
-        public RecordedDataPoint(DateTime timestamp, double elapsedSeconds, double[] chValues, double[] out1Values, double[] out2Values)
+        public RecordedDataPoint(DateTime timestamp, double elapsedSeconds, double[] chValues, double[] svValues, double[] out1Values, double[] out2Values)
         {
             Timestamp = timestamp;
             ElapsedSeconds = elapsedSeconds;
             CHValues = chValues;
+            SVValues = svValues;
             Out1Values = out1Values;
             Out2Values = out2Values;
         }
@@ -21,6 +22,8 @@ namespace DTE10T_WPF
         public double[] Out1Values { get; set; } = new double[8];
 
         public double[] Out2Values { get; set; } = new double[8];
+
+        public double[] SVValues { get; set; } = new double[8];
 
         public DateTime Timestamp { get; set; }
     }
