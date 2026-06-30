@@ -10,7 +10,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
@@ -570,21 +569,8 @@ namespace DTE10T_WPF
         ///<summary>
         /// 设置全部量程下限</summary>
         private void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
-        {
-            if(double.TryParse(txtSetAllRangeLow.Text, out double value))
-            {
-                foreach(var item in PVSVList)
-                {
-                    item.RangeLow = value;
-                }
-                txtStatus.Text = "已设置全部量程下限";
-                txtStatus.Foreground = Brushes.Green;
-            }
-            else
-            {
-                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
+        { SetAllRangeLow().ConfigureAwait(false); }
+
 
         // ========== 功能选择参数 (三) 批量设置按钮 ==========
         ///<summary>
@@ -803,6 +789,24 @@ namespace DTE10T_WPF
             }
         }
 
+        private async Task SetAllRangeLow()
+        {
+            if(double.TryParse(txtSetAllRangeLow.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.RangeLow = value;
+                    await _modbus.WriteRangeLowAsync(GetChannelIndex(item.Channel), value);
+                }
+                txtStatus.Text = "已设置全部量程下限";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private async Task SetAllSV()
         {
             if(double.TryParse(txtSetAllSV.Text, out double value))
@@ -810,10 +814,7 @@ namespace DTE10T_WPF
                 foreach(var item in PVSVList)
                 {
                     item.SV = value;
-                    for(int ch = 0; ch < 8; ch++)
-                    {
-                        await _modbus.WriteSVAsync(ch, item.SV);
-                    }
+                    await _modbus.WriteSVAsync(GetChannelIndex(item.Channel), item.SV);
                 }
                 txtStatus.Text = "已设置全部 SV 值";
                 txtStatus.Foreground = Brushes.Green;
@@ -919,7 +920,7 @@ namespace DTE10T_WPF
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Closing] 窗口关闭时断开连接异常: {ex.Message}");
+                Logger.Error($"[Closing] 窗口关闭时断开连接异常: {ex.Message}", ex);
             }
             finally
             {

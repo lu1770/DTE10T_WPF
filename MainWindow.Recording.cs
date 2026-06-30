@@ -76,7 +76,7 @@ namespace DTE10T_WPF
             catch(Exception ex)
             {
                 MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                System.Diagnostics.Debug.WriteLine($"[ExportCSV] 导出失败: {ex.Message}");
+                Logger.Error($"[ExportCSV] 导出失败: {ex.Message}", ex);
             }
         }
 
@@ -150,12 +150,12 @@ namespace DTE10T_WPF
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[TempCSV] 已保存临时文件: {tempFilePath}, 数据条数: {AutoSaveInterval}");
+                Logger.Info($"[TempCSV] 已保存临时文件: {tempFilePath}, 数据条数: {AutoSaveInterval}");
                 txtStatus.Text = $"📝 已记录 {_recordedData.Count} 条数据 (临时文件 #{_tempFileCounter})";
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[TempCSV] 保存临时文件失败: {ex.Message}");
+                Logger.Error($"[TempCSV] 保存临时文件失败: {ex.Message}", ex);
             }
         }
 

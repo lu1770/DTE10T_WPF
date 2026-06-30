@@ -17,7 +17,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[Alarm] 请先连接设备");
+                Logger.Warn("[Alarm] 请先连接设备");
                 return;
             }
 
@@ -63,7 +63,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Alarm] 写入失败: {ex.Message}");
+                Logger.Error($"[Alarm] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -76,7 +76,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[CT] 请先连接设备");
+                Logger.Warn("[CT] 请先连接设备");
                 return;
             }
 
@@ -107,7 +107,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[CT] 写入失败: {ex.Message}");
+                Logger.Error($"[CT] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -120,7 +120,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[Event] 请先连接设备");
+                Logger.Warn("[Event] 请先连接设备");
                 return;
             }
 
@@ -155,7 +155,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Event] 写入失败: {ex.Message}");
+                Logger.Error($"[Event] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -169,7 +169,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[FunctionSelect] 请先连接设备");
+                Logger.Warn("[FunctionSelect] 请先连接设备");
                 return;
             }
 
@@ -268,7 +268,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[FunctionSelect] 写入失败: {ex.Message}");
+                Logger.Error($"[FunctionSelect] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -281,7 +281,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[HotRunner] 请先连接设备");
+                Logger.Warn("[HotRunner] 请先连接设备");
                 return;
             }
 
@@ -326,7 +326,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[HotRunner] 写入失败: {ex.Message}");
+                Logger.Error($"[HotRunner] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -339,7 +339,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[InputAdj] 请先连接设备");
+                Logger.Warn("[InputAdj] 请先连接设备");
                 return;
             }
 
@@ -387,7 +387,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[InputAdj] 写入失败: {ex.Message}");
+                Logger.Error($"[InputAdj] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -400,7 +400,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[Output] 请先连接设备");
+                Logger.Warn("[Output] 请先连接设备");
                 return;
             }
 
@@ -457,7 +457,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Output] 写入失败: {ex.Message}");
+                Logger.Error($"[Output] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -470,7 +470,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[PID] 请先连接设备");
+                Logger.Warn("[PID] 请先连接设备");
                 return;
             }
 
@@ -526,7 +526,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[PID] 写入失败: {ex.Message}");
+                Logger.Error($"[PID] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -578,7 +578,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Write] 写入失败: {ex.Message}");
+                Logger.Error($"[Write] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -591,7 +591,7 @@ namespace DTE10T_WPF
 
             if(!_isConnected || _modbus == null)
             {
-                System.Diagnostics.Debug.WriteLine("[Slope] 请先连接设备");
+                Logger.Warn("[Slope] 请先连接设备");
                 return;
             }
 
@@ -627,7 +627,7 @@ namespace DTE10T_WPF
             {
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Slope] 写入失败: {ex.Message}");
+                Logger.Error($"[Slope] 写入失败: {ex.Message}", ex);
             }
         }
     }

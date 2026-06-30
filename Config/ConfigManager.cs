@@ -26,7 +26,7 @@ namespace DTE10T_WPF
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ConfigManager] 保存配置失败: {ex.Message}");
+                Logger.Error($"[ConfigManager] 保存配置失败: {ex.Message}", ex);
             }
         }
 
@@ -42,7 +42,7 @@ namespace DTE10T_WPF
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ConfigManager] 加载配置失败: {ex.Message}");
+                Logger.Error($"[ConfigManager] 加载配置失败: {ex.Message}", ex);
             }
             return new AppConfig();
         }

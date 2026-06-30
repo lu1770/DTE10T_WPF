@@ -108,7 +108,7 @@ namespace DTE10T_WPF
             catch(Exception ex)
             {
                 MessageBox.Show($"保存图像失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                System.Diagnostics.Debug.WriteLine($"[SaveImage] 保存失败: {ex.Message}");
+                Logger.Error($"[SaveImage] 保存失败: {ex.Message}", ex);
             }
         }
 

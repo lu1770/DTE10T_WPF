@@ -77,7 +77,7 @@ namespace DTE10T_WPF
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Poll] 轮询异常: {ex.Message}");
+                Logger.Error($"[Poll] 轮询异常: {ex.Message}", ex);
                 ledCOM.Fill = Brushes.Red;
                 txtStatus.Text = $"通讯异常: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
@@ -100,7 +100,7 @@ namespace DTE10T_WPF
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Disconnect] 断开连接异常: {ex.Message}");
+                Logger.Error($"[Disconnect] 断开连接异常: {ex.Message}", ex);
             }
             finally
             {
@@ -131,7 +131,7 @@ namespace DTE10T_WPF
                 }
                 catch(Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Refresh] 刷新数据异常: {ex.Message}");
+                    Logger.Error($"[Refresh] 刷新数据异常: {ex.Message}", ex);
                 }
                 finally
                 {
@@ -165,7 +165,7 @@ namespace DTE10T_WPF
                 }
                 catch(Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Reconnect] 断开连接异常: {ex.Message}");
+                    Logger.Error($"[Reconnect] 断开连接异常: {ex.Message}", ex);
                 }
                 finally
                 {
@@ -221,7 +221,7 @@ namespace DTE10T_WPF
                     btnDisconnect.IsEnabled = false;
                     btnRefresh.IsEnabled = false;
                     ledCOM.Fill = Brushes.Red;
-                    System.Diagnostics.Debug.WriteLine("[Reconnect] 无法重新连接到温控器");
+                    Logger.Error("[Reconnect] 无法重新连接到温控器");
                 }
             }
             catch(Exception ex)
@@ -233,7 +233,7 @@ namespace DTE10T_WPF
                 btnDisconnect.IsEnabled = false;
                 btnRefresh.IsEnabled = false;
                 ledCOM.Fill = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Reconnect] 重连异常: {ex.Message}");
+                Logger.Error($"[Reconnect] 重连异常: {ex.Message}", ex);
             }
         }
 
@@ -319,7 +319,7 @@ namespace DTE10T_WPF
                     txtStatus.Foreground = Brushes.Red;
                     btnConnect.IsEnabled = true;
                     ledCOM.Fill = Brushes.Red;
-                    System.Diagnostics.Debug.WriteLine("[Connect] 无法连接到温控器，请检查: COM端口、串口占用、波特率/站号");
+                    Logger.Error("[Connect] 无法连接到温控器，请检查: COM端口、串口占用、波特率/站号");
                 }
             }
             catch(Exception ex)
@@ -329,7 +329,7 @@ namespace DTE10T_WPF
                 txtStatus.Foreground = Brushes.Red;
                 btnConnect.IsEnabled = true;
                 ledCOM.Fill = Brushes.Red;
-                System.Diagnostics.Debug.WriteLine($"[Connect] 连接异常: {ex.Message}");
+                Logger.Error($"[Connect] 连接异常: {ex.Message}", ex);
             }
         }
 
@@ -409,7 +409,7 @@ namespace DTE10T_WPF
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PollCallback] 定时轮询异常: {ex.Message}");
+                Logger.Error($"[PollCallback] 定时轮询异常: {ex.Message}", ex);
             }
         }
 
@@ -585,7 +585,7 @@ namespace DTE10T_WPF
                     {
                         double tempDiff = rawPV - _lastPVValues[i];
                         double ratePerMinute = (tempDiff / timeDiff.TotalMilliseconds) * 60 * 1000;
-                        Debug.WriteLine($"[步骤2] 温度变化速率: {ratePerMinute}℃/min ({tempDiff}℃ / {timeDiff.TotalMilliseconds}ms)");
+                        Logger.Debug($"[步骤2] 温度变化速率: {ratePerMinute}℃/min ({tempDiff}℃ / {timeDiff.TotalMilliseconds}ms)");
                         TempCards[i].RateOfChange = Math.Round(ratePerMinute, 1);
 
                         _lastPVValues[i] = rawPV;

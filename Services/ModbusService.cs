@@ -2904,7 +2904,7 @@ namespace DTE10T_WPF.Services
                        }
                        catch(Exception ex)
                        {
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 连接失败: {ex.Message}");
+                           Logger.Error($"[Modbus] 连接失败: {ex.Message}", ex);
                            Dispose();
                            return false;
                        }
@@ -3017,7 +3017,7 @@ namespace DTE10T_WPF.Services
                        }
                        catch(Exception ex)
                        {
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 读取寄存器失败 @{address:X4}: {ex.Message}");
+                           Logger.Error($"[Modbus] 读取寄存器失败 @{address:X4}: {ex.Message}", ex);
                            return (ushort)0;
                        }
             });
@@ -3035,7 +3035,7 @@ namespace DTE10T_WPF.Services
                        }
                        catch(Exception ex)
                        {
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 批量读取寄存器失败 @{startAddress:X4}, count={count}: {ex.Message}");
+                           Logger.Error($"[Modbus] 批量读取寄存器失败 @{startAddress:X4}, count={count}: {ex.Message}", ex);
                            throw;
                        }
             });
@@ -3231,7 +3231,7 @@ namespace DTE10T_WPF.Services
                        }
                        catch(Exception ex)
                        {
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 批量写入失败 @{startAddress:X4}: {ex.Message}");
+                           Logger.Error($"[Modbus] 批量写入失败 @{startAddress:X4}: {ex.Message}", ex);
                            return false;
                        }
             });
@@ -3322,12 +3322,12 @@ namespace DTE10T_WPF.Services
                        try
                        {
                            _master!.WriteSingleRegister(_slaveId, (ushort)address, value);
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 写入成功 @{address:X4}: {value}");
+                           Logger.Info($"[Modbus] 写入成功 @{address:X4}: {value}");
                            return true;
                        }
                        catch(Exception ex)
                        {
-                           System.Diagnostics.Debug.WriteLine($"[Modbus] 写入失败 @{address:X4}: {ex.Message}");
+                           Logger.Error($"[Modbus] 写入失败 @{address:X4}: {ex.Message}", ex);
                            return false;
                        }
             });
@@ -3340,12 +3340,13 @@ namespace DTE10T_WPF.Services
         }
 
         ///<summary>
-        /// 写入 SV 设定值 (FLOAT32 = 2 寄存器)</summary>
+        /// 写入 SV 设定值 (INT16 = 1 寄存器, 0.1℃)</summary>
         public async Task<bool> WriteSVAsync(int channel, double value)
         {
             int addr = 0x1008 + channel;
-            ushort[] regs = FloatToUshortArray((float)value);
-            return await WriteMultipleRegistersAsync(addr, regs);
+            // SV 为 INT16 类型，直接将值转换为 ushort (扩大10倍以匹配0.1℃分辨率)
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
         }
 
         public async Task<bool> WriteTdAsync(int channel, double value)

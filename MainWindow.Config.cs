@@ -32,7 +32,7 @@ namespace DTE10T_WPF
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[LoadPorts] 加载串口列表异常: {ex.Message}");
+                Logger.Error($"[LoadPorts] 加载串口列表异常: {ex.Message}", ex);
             }
         }
 
@@ -80,11 +80,11 @@ namespace DTE10T_WPF
                         configLoaded = true;
                     }
 
-                    System.Diagnostics.Debug.WriteLine("[Config] 配置加载成功");
+                    Logger.Info("[Config] 配置加载成功");
                 }
                 catch(Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Config] 加载配置失败: {ex.Message}");
+                    Logger.Error($"[Config] 加载配置失败: {ex.Message}", ex);
                 }
             }
 
@@ -150,7 +150,7 @@ namespace DTE10T_WPF
             }
             catch(Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Config] 保存配置失败: {ex.Message}");
+                Logger.Error($"[Config] 保存配置失败: {ex.Message}", ex);
             }
             finally
             {
