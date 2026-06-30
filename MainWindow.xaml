@@ -1078,12 +1078,11 @@
                                 Binding="{Binding Sub1Function}"
                                 Header="SUB1功能"
                                 IsReadOnly="False" />
-                            <DataGridComboBoxColumn
-                                Width="90"
-                                DisplayMemberPath="."
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding ControlMode}"
                                 Header="控制方式"
-                                ItemsSource="{Binding DataContext.ControlModeList, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                SelectedItemBinding="{Binding ControlMode}" />
+                                IsReadOnly="False" />
                             <DataGridTextColumn
                                 Width="100"
                                 Binding="{Binding Alarm1Mode}"

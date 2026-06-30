@@ -68,13 +68,12 @@ namespace DTE10T_WPF
                         }
                     }
                 });
-
-                txtStatus.Text = $"✅ 已导出 {_recordedData.Count} 条数据";
-                txtStatus.Foreground = Brushes.Green;
-
-                MessageBox.Show($"数据已导出到:\n{filePath}", "导出成功", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                Application.Current.Dispatcher.Invoke(() => {
+                    txtStatus.Text = $"✅ 已导出 {_recordedData.Count} 条数据";
+                    txtStatus.Foreground = Brushes.Green;
+                    MessageBox.Show($"数据已导出到:\n{filePath}", "导出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                });
             }
             catch(Exception ex)
             {
@@ -153,8 +152,10 @@ namespace DTE10T_WPF
                     }
                 }
 
-                Logger.Info($"[TempCSV] 已保存临时文件: {tempFilePath}, 数据条数: {AutoSaveInterval}");
-                txtStatus.Text = $"📝 已记录 {_recordedData.Count} 条数据 (临时文件 #{_tempFileCounter})";
+                Application.Current.Dispatcher.Invoke(() => {
+                    Logger.Info($"[TempCSV] 已保存临时文件: {tempFilePath}, 数据条数: {AutoSaveInterval}");
+                    txtStatus.Text = $"📝 已记录 {_recordedData.Count} 条数据 (临时文件 #{_tempFileCounter})";
+                });
             }
             catch(Exception ex)
             {
@@ -184,9 +185,11 @@ namespace DTE10T_WPF
             });
 
             btnStartRecord.IsEnabled = false;
-            btnStopRecord.IsEnabled = true;
-            txtStatus.Text = "📝 正在记录数据...";
-            txtStatus.Foreground = Brushes.Blue;
+            Application.Current.Dispatcher.Invoke(() => {
+                btnStopRecord.IsEnabled = true;
+                txtStatus.Text = "📝 正在记录数据...";
+                txtStatus.Foreground = Brushes.Blue;
+            });
         }
 
         private async Task StopRecordAsync()
@@ -201,8 +204,10 @@ namespace DTE10T_WPF
             }
             else
             {
-                txtStatus.Text = "没有记录的数据可导出";
-                txtStatus.Foreground = Brushes.Gray;
+                Application.Current.Dispatcher.Invoke(() => {
+                    txtStatus.Text = "没有记录的数据可导出";
+                    txtStatus.Foreground = Brushes.Gray;
+                }); 
             }
         }
 
@@ -254,8 +259,9 @@ namespace DTE10T_WPF
                         }
                     }
                 });
-
-                Logger.Info($"[MergeCSV] 已合并 {tempFiles.Length} 个临时文件到桌面: {mergedFilePath}");
+                Application.Current.Dispatcher.Invoke(() => {
+                    Logger.Info($"[MergeCSV] 已合并 {tempFiles.Length} 个临时文件到桌面: {mergedFilePath}");
+                });
             }
             catch(Exception ex)
             {

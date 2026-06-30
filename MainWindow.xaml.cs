@@ -374,8 +374,7 @@ namespace DTE10T_WPF
 
         ///<summary>
         /// 设置全部控制周期</summary>
-        private async void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e)
-        { await SetAllControlCycle(); }
+        private async void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e) { await SetAllControlCycle(); }
 
         ///<summary>
         /// 设置全部控制执行状态</summary>
@@ -423,18 +422,10 @@ namespace DTE10T_WPF
                     foreach(var item in FunctionSelectList)
                     {
                         item.ControlMode = controlMode;
+                        await _modbus.SetControlModeAsync(GetChannelIndex(item.Channel), modeIndex);
                     }
                     txtStatus.Text = "已设置全部控制方式";
                     txtStatus.Foreground = Brushes.Green;
-
-                    if(_modbus != null && _isConnected)
-                    {
-                        for(int i = 0; i < 8; i++)
-                        {
-                            await _modbus.SetControlModeAsync(i, modeIndex);
-                        }
-                        txtStatus.Text = "已写入全部控制方式";
-                    }
                 }
             }
             else
@@ -577,8 +568,7 @@ namespace DTE10T_WPF
 
         ///<summary>
         /// 设置全部量程下限</summary>
-        private async void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e)
-        { await SetAllRangeLow(); }
+        private async void BtnSetAllRangeLow_Click(object sender, RoutedEventArgs e) { await SetAllRangeLow(); }
 
 
         // ========== 功能选择参数 (三) 批量设置按钮 ==========
