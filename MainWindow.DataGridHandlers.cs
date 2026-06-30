@@ -1,8 +1,8 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Threading.Tasks;
 
 namespace DTE10T_WPF
 {
@@ -156,6 +156,119 @@ namespace DTE10T_WPF
                 txtStatus.Text = $"写入失败: {ex.Message}";
                 txtStatus.Foreground = Brushes.Red;
                 System.Diagnostics.Debug.WriteLine($"[Event] 写入失败: {ex.Message}");
+            }
+        }
+
+        // ========== 功能选择参数 (三) 编辑处理 ==========
+        private async void DgFunctionSelect_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[FunctionSelect] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as FunctionSelectModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? (e.Column as DataGridCheckBoxColumn)?.Header?.ToString() ?? (e.Column as DataGridComboBoxColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "传感器类型":
+                        int sensorIndex = Array.IndexOf(SensorTypeNames, model.SensorType);
+                        if(sensorIndex >= 0)
+                        {
+                            await _modbus.WriteSensorTypeAsync(ch, sensorIndex);
+                        }
+                        break;
+                    case "OUT1功能":
+                        int out1Index = Array.IndexOf(OutFunctionNames, model.Out1Function);
+                        if(out1Index >= 0)
+                        {
+                            await _modbus.SetOut1ControlAsync(ch, out1Index);
+                        }
+                        break;
+                    case "SUB1功能":
+                        int sub1Index = Array.IndexOf(OutFunctionNames, model.Sub1Function);
+                        if(sub1Index >= 0)
+                        {
+                            await _modbus.SetOut2ControlAsync(ch, sub1Index);
+                        }
+                        break;
+                    case "控制方式":
+                        int modeIndex = Array.IndexOf(ControlModeNames, model.ControlMode);
+                        if(modeIndex >= 0)
+                        {
+                            await _modbus.SetControlModeAsync(ch, modeIndex);
+                        }
+                        break;
+                    case "警报一模式":
+                        int alarm1Index = Array.IndexOf(AlarmModeNames, model.Alarm1Mode);
+                        if(alarm1Index >= 0)
+                        {
+                            await _modbus.SetAlarm1ModeAsync(ch, alarm1Index);
+                        }
+                        break;
+                    case "警报二模式":
+                        int alarm2Index = Array.IndexOf(AlarmModeNames, model.Alarm2Mode);
+                        if(alarm2Index >= 0)
+                        {
+                            await _modbus.SetAlarm2ModeAsync(ch, alarm2Index);
+                        }
+                        break;
+                    case "控制周期(s)":
+                        await _modbus.WriteControlCycleAsync(ch, model.ControlCycle);
+                        break;
+                    case "执行状态":
+                        int execIndex = Array.IndexOf(ControlExecNames, model.ControlExecStatus);
+                        if(execIndex >= 0)
+                        {
+                            await _modbus.SetControlExecAsync(ch, execIndex);
+                        }
+                        break;
+                    case "AT自整定":
+                        if(model.ATEnabled)
+                        {
+                            await _modbus.StartATAsync(ch);
+                        }
+                        else
+                        {
+                            await _modbus.StopATAsync(ch);
+                        }
+                        break;
+                    case "比例输出":
+                        int propIndex = Array.IndexOf(ProportionSignNames, model.ProportionSign);
+                        if(propIndex >= 0)
+                        {
+                            await _modbus.WriteProportionSignAsync(ch, propIndex);
+                        }
+                        break;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                System.Diagnostics.Debug.WriteLine($"[FunctionSelect] 写入失败: {ex.Message}");
             }
         }
 
@@ -373,7 +486,7 @@ namespace DTE10T_WPF
                 return;
             }
 
-            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? (e.Column as DataGridCheckBoxColumn)?.Header?.ToString() ?? string.Empty;
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? (e.Column as DataGridCheckBoxColumn)?.Header?.ToString() ?? (e.Column as DataGridComboBoxColumn)?.Header?.ToString() ?? string.Empty;
 
             try
             {

@@ -936,6 +936,188 @@
                 </Grid>
             </TabItem>
 
+            <!--  Tab5: 功能选择参数  -->
+            <TabItem Header="⚙ 功能选择参数">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel
+                        Grid.Row="0"
+                        Margin="8,4"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            FontWeight="Bold"
+                            Text="设置全部:" />
+                        <ComboBox
+                            x:Name="cmbSetAllSensorType"
+                            Width="130"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="传感器类型">
+                            <ComboBoxItem Content="K型热电偶" />
+                            <ComboBoxItem Content="J型热电偶" />
+                            <ComboBoxItem Content="T型热电偶" />
+                            <ComboBoxItem Content="E型热电偶" />
+                            <ComboBoxItem Content="N型热电偶" />
+                            <ComboBoxItem Content="R型热电偶" />
+                            <ComboBoxItem Content="S型热电偶" />
+                            <ComboBoxItem Content="B型热电偶" />
+                            <ComboBoxItem Content="L型热电偶" />
+                            <ComboBoxItem Content="U型热电偶" />
+                            <ComboBoxItem Content="TXK型" />
+                            <ComboBoxItem Content="白金JPt100" />
+                            <ComboBoxItem Content="白金Pt100" />
+                            <ComboBoxItem Content="Ni120" />
+                            <ComboBoxItem Content="Cu50" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllSensorType_Click"
+                            Content="传感器全部" />
+                        <ComboBox
+                            x:Name="cmbSetAllControlMode"
+                            Width="100"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="控制方式">
+                            <ComboBoxItem Content="PID" />
+                            <ComboBoxItem Content="ON-OFF" />
+                            <ComboBoxItem Content="手动" />
+                            <ComboBoxItem Content="可程序PID" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllControlMode_Click"
+                            Content="方式全部" />
+                        <ComboBox
+                            x:Name="cmbSetAllAlarmMode"
+                            Width="140"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="警报模式">
+                            <ComboBoxItem Content="无警报" />
+                            <ComboBoxItem Content="上下限警报" />
+                            <ComboBoxItem Content="上限警报" />
+                            <ComboBoxItem Content="下限警报" />
+                            <ComboBoxItem Content="上下限逆动作" />
+                            <ComboBoxItem Content="绝对值上下限" />
+                            <ComboBoxItem Content="绝对值上限" />
+                            <ComboBoxItem Content="绝对值下限" />
+                            <ComboBoxItem Content="待机上下限" />
+                            <ComboBoxItem Content="待机上限" />
+                            <ComboBoxItem Content="待机下限" />
+                            <ComboBoxItem Content="迟滞上限" />
+                            <ComboBoxItem Content="迟滞下限" />
+                            <ComboBoxItem Content="CT警报" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllAlarmMode_Click"
+                            Content="警报全部" />
+                        <ComboBox
+                            x:Name="cmbSetAllControlExec"
+                            Width="100"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            ToolTip="控制执行状态">
+                            <ComboBoxItem Content="停止" />
+                            <ComboBoxItem Content="执行中" />
+                            <ComboBoxItem Content="程序结束" />
+                            <ComboBoxItem Content="程序暂停" />
+                        </ComboBox>
+                        <Button
+                            Width="70"
+                            Margin="0,0,8,0"
+                            Click="BtnSetAllControlExec_Click"
+                            Content="执行全部" />
+                        <CheckBox
+                            x:Name="chkSetAllAT"
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            Content="AT自整定" />
+                        <Button
+                            Width="70"
+                            Click="BtnSetAllAT_Click"
+                            Content="AT全部" />
+                    </StackPanel>
+                    <DataGrid
+                        x:Name="dgFunctionSelect"
+                        Grid.Row="1"
+                        AlternatingRowBackground="{StaticResource RowEvenBrush}"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CellEditEnding="DgFunctionSelect_CellEditEnding"
+                        GridLinesVisibility="All"
+                        HeadersVisibility="Column"
+                        RowBackground="{StaticResource RowOddBrush}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="50"
+                                Binding="{Binding Channel}"
+                                Header="通道"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="110"
+                                Binding="{Binding SensorType}"
+                                Header="传感器类型"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Out1Function}"
+                                Header="OUT1功能"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Sub1Function}"
+                                Header="SUB1功能"
+                                IsReadOnly="False" />
+                            <DataGridComboBoxColumn
+                                Width="90"
+                                DisplayMemberPath="."
+                                Header="控制方式"
+                                ItemsSource="{Binding DataContext.ControlModeList, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                SelectedItemBinding="{Binding ControlMode}" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Alarm1Mode}"
+                                Header="警报一模式"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding Alarm2Mode}"
+                                Header="警报二模式"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="90"
+                                Binding="{Binding ControlCycle, StringFormat=F0}"
+                                Header="控制周期(s)"
+                                IsReadOnly="False" />
+                            <DataGridTextColumn
+                                Width="90"
+                                Binding="{Binding ControlExecStatus}"
+                                Header="执行状态"
+                                IsReadOnly="False" />
+                            <DataGridCheckBoxColumn
+                                Width="70"
+                                Binding="{Binding ATEnabled}"
+                                Header="AT自整定" />
+                            <DataGridTextColumn
+                                Width="80"
+                                Binding="{Binding ProportionSign}"
+                                Header="比例输出"
+                                IsReadOnly="False" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
             <!--  Tab6: 高级功能  -->
             <TabItem Header="📐 高级功能">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">

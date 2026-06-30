@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Root Type="DevExpress.CodeRush.Foundation.Navigation.QuickFileNav.SolutionFileInfosContainer">
+  <Options Language="Neutral">
+    <Items>
+      <Item Id="{117ce3ea-4cc1-464a-89be-2c24f8bd7ca0}">
+        <Filename>MainWindow.xaml</Filename>
+        <FilePath>c:\users\zheng\documents\dte10t_wpf.tar\dte10t_wpf\mainwindow.xaml</FilePath>
+        <Folders />
+        <ProjectFileName>C:\Users\zheng\Documents\DTE10T_WPF.tar\DTE10T_WPF\DTE10T_WPF.csproj</ProjectFileName>
+        <ProjectName>DTE10T_WPF</ProjectName>
+      </Item>
+    </Items>
+  </Options>
+</Root>

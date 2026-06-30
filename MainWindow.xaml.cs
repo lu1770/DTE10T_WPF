@@ -56,9 +56,15 @@ namespace DTE10T_WPF
             OxyColors.Gold
         };
 
+        // 控制执行/停止状态名称
+        private static readonly string[] ControlExecNames = new[]
+        {
+            "停止", "执行中", "程序结束", "程序暂停"
+        };
+
         private static readonly string[] ControlModeNames = new[]
         {
-            "PID", "ON-OFF", "手动", "可程序PID"
+            "PID", "ON-OFF", "Manual", "可程序PID"
         };
 
         private static readonly string[] EventFunctionNames = new[]
@@ -76,6 +82,12 @@ namespace DTE10T_WPF
             "无(None)", "偶(Even)", "奇(Odd)"
         };
 
+        // 正负比例输出设定
+        private static readonly string[] ProportionSignNames = new[]
+        {
+            "正", "负(斜率)"
+        };
+
         // ========== 常量映射 ==========
         private static readonly string[] SensorTypeNames = new[]
         {
@@ -87,6 +99,7 @@ namespace DTE10T_WPF
         private LineSeries[]? _channelSeries;
         private DateTime _chartStartTime;
         private double _chartTimeOffset = 0;
+        private readonly List<double>[] _historyPVValues = new List<double>[8];
         private bool _isChartPaused = false;
         // ========== 配置管理 ==========
         private bool _isConfigSaving = false;
@@ -96,7 +109,6 @@ namespace DTE10T_WPF
         // ========== 温度变化速率计算 ==========
         private double[] _lastPVValues = new double[8];
         private readonly int _maxHistoryPoints = 100;
-        private readonly List<double>[] _historyPVValues = new List<double>[8];
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
@@ -162,6 +174,7 @@ namespace DTE10T_WPF
             AttachListenersToCollection<CommParamModel>(CommList);
             AttachListenersToCollection<ProgramPatternModel>(PatternList);
             AttachListenersToCollection<ProgramStepModel>(StepList);
+            AttachListenersToCollection<FunctionSelectModel>(FunctionSelectList);
 
             // 监听新增项
             PVSVList.CollectionChanged += (sender, e) => {
@@ -272,6 +285,15 @@ namespace DTE10T_WPF
                     }
                 }
             };
+            FunctionSelectList.CollectionChanged += (sender, e) => {
+                if(e.NewItems != null)
+                {
+                    foreach(INotifyPropertyChanged item in e.NewItems)
+                    {
+                        item.PropertyChanged += ModelPropertyChanged;
+                    }
+                }
+            };
         }
 
         // ========== 通道选择 ==========
@@ -288,34 +310,137 @@ namespace DTE10T_WPF
         }
 
         ///<summary>
-        /// 设置全部控制周期</summary>
-        private void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e)
-        { SetAllControlCycle().ConfigureAwait(false); }
-
-        private async Task SetAllControlCycle()
+        /// 设置全部警报模式</summary>
+        private async void BtnSetAllAlarmMode_Click(object sender, RoutedEventArgs e)
         {
-            if(int.TryParse(txtSetAllControlCycle.Text, out int value))
+            string? alarmMode = (cmbSetAllAlarmMode.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(alarmMode))
             {
-                foreach(var item in OutputList)
+                int modeIndex = Array.IndexOf(AlarmModeNames, alarmMode);
+                if(modeIndex >= 0)
                 {
-                    item.ControlCycle = value;
-                }
-
-                txtStatus.Text = "已设置全部控制周期";
-                txtStatus.Foreground = Brushes.Green;
-
-                if(_modbus != null && _isConnected)
-                {
-                    for(int i = 0; i < 8; i++)
+                    foreach(var item in FunctionSelectList)
                     {
-                        await _modbus.WriteControlCycleAsync(i, value);
+                        item.Alarm1Mode = alarmMode;
+                        item.Alarm2Mode = alarmMode;
                     }
-                    txtStatus.Text = "已写入全部控制周期";
+                    txtStatus.Text = "已设置全部警报模式";
+                    txtStatus.Foreground = Brushes.Green;
+
+                    if(_modbus != null && _isConnected)
+                    {
+                        for(int i = 0; i < 8; i++)
+                        {
+                            await _modbus.SetAlarm1ModeAsync(i, modeIndex);
+                            await _modbus.SetAlarm2ModeAsync(i, modeIndex);
+                        }
+                        txtStatus.Text = "已写入全部警报模式";
+                    }
                 }
             }
             else
             {
-                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请选择有效的警报模式", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部 AT 自整定</summary>
+        private async void BtnSetAllAT_Click(object sender, RoutedEventArgs e)
+        {
+            bool atEnabled = chkSetAllAT.IsChecked ?? false;
+            foreach(var item in FunctionSelectList)
+            {
+                item.ATEnabled = atEnabled;
+            }
+            txtStatus.Text = atEnabled ? "已启动全部 AT 自整定" : "已停止全部 AT 自整定";
+            txtStatus.Foreground = Brushes.Green;
+
+            if(_modbus != null && _isConnected)
+            {
+                for(int i = 0; i < 8; i++)
+                {
+                    if(atEnabled)
+                    {
+                        await _modbus.StartATAsync(i);
+                    }
+                    else
+                    {
+                        await _modbus.StopATAsync(i);
+                    }
+                }
+                txtStatus.Text = atEnabled ? "已写入全部启动 AT" : "已写入全部停止 AT";
+            }
+        }
+
+        ///<summary>
+        /// 设置全部控制周期</summary>
+        private void BtnSetAllControlCycle_Click(object sender, RoutedEventArgs e)
+        { SetAllControlCycle().ConfigureAwait(false); }
+
+        ///<summary>
+        /// 设置全部控制执行状态</summary>
+        private async void BtnSetAllControlExec_Click(object sender, RoutedEventArgs e)
+        {
+            string? execStatus = (cmbSetAllControlExec.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(execStatus))
+            {
+                int statusIndex = Array.IndexOf(ControlExecNames, execStatus);
+                if(statusIndex >= 0)
+                {
+                    foreach(var item in FunctionSelectList)
+                    {
+                        item.ControlExecStatus = execStatus;
+                    }
+                    txtStatus.Text = "已设置全部执行状态";
+                    txtStatus.Foreground = Brushes.Green;
+
+                    if(_modbus != null && _isConnected)
+                    {
+                        for(int i = 0; i < 8; i++)
+                        {
+                            await _modbus.SetControlExecAsync(i, statusIndex);
+                        }
+                        txtStatus.Text = "已写入全部执行状态";
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("请选择有效的执行状态", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ///<summary>
+        /// 设置全部控制方式</summary>
+        private async void BtnSetAllControlMode_Click(object sender, RoutedEventArgs e)
+        {
+            string? controlMode = (cmbSetAllControlMode.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(controlMode))
+            {
+                int modeIndex = Array.IndexOf(ControlModeNames, controlMode);
+                if(modeIndex >= 0)
+                {
+                    foreach(var item in FunctionSelectList)
+                    {
+                        item.ControlMode = controlMode;
+                    }
+                    txtStatus.Text = "已设置全部控制方式";
+                    txtStatus.Foreground = Brushes.Green;
+
+                    if(_modbus != null && _isConnected)
+                    {
+                        for(int i = 0; i < 8; i++)
+                        {
+                            await _modbus.SetControlModeAsync(i, modeIndex);
+                        }
+                        txtStatus.Text = "已写入全部控制方式";
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("请选择有效的控制方式", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -461,24 +586,43 @@ namespace DTE10T_WPF
             }
         }
 
+        // ========== 功能选择参数 (三) 批量设置按钮 ==========
         ///<summary>
-        /// 设置全部 SV 值</summary>
-        private void BtnSetAllSV_Click(object sender, RoutedEventArgs e)
+        /// 设置全部传感器类型</summary>
+        private async void BtnSetAllSensorType_Click(object sender, RoutedEventArgs e)
         {
-            if(double.TryParse(txtSetAllSV.Text, out double value))
+            string? sensorType = (cmbSetAllSensorType.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if(!string.IsNullOrEmpty(sensorType))
             {
-                foreach(var item in PVSVList)
+                int sensorIndex = Array.IndexOf(SensorTypeNames, sensorType);
+                if(sensorIndex >= 0)
                 {
-                    item.SV = value;
+                    foreach(var item in FunctionSelectList)
+                    {
+                        item.SensorType = sensorType;
+                    }
+                    txtStatus.Text = "已设置全部传感器类型";
+                    txtStatus.Foreground = Brushes.Green;
+
+                    if(_modbus != null && _isConnected)
+                    {
+                        for(int i = 0; i < 8; i++)
+                        {
+                            await _modbus.WriteSensorTypeAsync(i, sensorIndex);
+                        }
+                        txtStatus.Text = "已写入全部传感器类型";
+                    }
                 }
-                txtStatus.Text = "已设置全部 SV 值";
-                txtStatus.Foreground = Brushes.Green;
             }
             else
             {
-                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请选择有效的传感器类型", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+
+        ///<summary>
+        /// 设置全部 SV 值</summary>
+        private void BtnSetAllSV_Click(object sender, RoutedEventArgs e) { SetAllSV().ConfigureAwait(false); }
 
         // ========== DataGrid 编辑事件处理 ==========
 
@@ -552,6 +696,22 @@ namespace DTE10T_WPF
                     SV = 200,
                     Slope = 200
                 });
+
+                // 功能选择参数 (三)
+                FunctionSelectList.Add(new()
+                {
+                    Channel = chName,
+                    SensorType = "K型热电偶",
+                    Out1Function = "加热(逆向)",
+                    Sub1Function = "加热(逆向)",
+                    ControlMode = "PID",
+                    Alarm1Mode = "无警报",
+                    Alarm2Mode = "无警报",
+                    ControlCycle = 1,
+                    ControlExecStatus = "停止",
+                    ATEnabled = false,
+                    ProportionSign = "正"
+                });
             }
 
             // 通讯参数
@@ -601,6 +761,7 @@ namespace DTE10T_WPF
             dgComm.ItemsSource = CommList;
             dgProgramPattern.ItemsSource = PatternList;
             dgProgramSteps.ItemsSource = StepList;
+            dgFunctionSelect.ItemsSource = FunctionSelectList;
         }
 
         // ========== 工具方法 ==========
@@ -613,6 +774,54 @@ namespace DTE10T_WPF
             bytes[3] = (byte)(low & 0xFF);
             float value = BitConverter.ToSingle(bytes, 0);
             return (float)(value * scaling);
+        }
+
+        private async Task SetAllControlCycle()
+        {
+            if(int.TryParse(txtSetAllControlCycle.Text, out int value))
+            {
+                foreach(var item in OutputList)
+                {
+                    item.ControlCycle = value;
+                }
+
+                txtStatus.Text = "已设置全部控制周期";
+                txtStatus.Foreground = Brushes.Green;
+
+                if(_modbus != null && _isConnected)
+                {
+                    for(int i = 0; i < 8; i++)
+                    {
+                        await _modbus.WriteControlCycleAsync(i, value);
+                    }
+                    txtStatus.Text = "已写入全部控制周期";
+                }
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async Task SetAllSV()
+        {
+            if(double.TryParse(txtSetAllSV.Text, out double value))
+            {
+                foreach(var item in PVSVList)
+                {
+                    item.SV = value;
+                    for(int ch = 0; ch < 8; ch++)
+                    {
+                        await _modbus.WriteSVAsync(ch, item.SV);
+                    }
+                }
+                txtStatus.Text = "已设置全部 SV 值";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            else
+            {
+                MessageBox.Show("请输入有效的数值", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void ToggleChartPause()
@@ -723,9 +932,14 @@ namespace DTE10T_WPF
 
         public ObservableCollection<CommParamModel> CommList { get; } = new();
 
+        public List<string> ControlModeList { get; } = ControlModeNames.ToList();
+
         public ObservableCollection<CTModel> CTList { get; } = new();
 
         public ObservableCollection<EventModel> EventList { get; } = new();
+
+        // ========== 功能选择参数 (三) ==========
+        public ObservableCollection<FunctionSelectModel> FunctionSelectList { get; } = new();
 
         public ObservableCollection<HotRunnerModel> HotRunnerList { get; } = new();
 

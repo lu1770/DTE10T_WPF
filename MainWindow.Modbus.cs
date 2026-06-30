@@ -47,21 +47,25 @@ namespace DTE10T_WPF
                         await PollOutputConfigAsync();
                         break;
                     case 5:
+                        await PollFunctionSelectAsync();
+                        break;
+                    case 6:
                         await PollSlopeSettingsAsync();
                         await PollInputAdjustmentsAsync();
                         await PollCTCurrentAsync();
                         await PollEventFunctionsAsync();
                         await PollHotRunnerParamsAsync();
                         break;
-                    case 6:
+                    case 7:
                         await PollCommParamsAsync();
                         break;
-                    case 7:
+                    case 8:
                         break;
                     default:
                         await PollPIDParametersAsync();
                         await PollAlarmSettingsAsync();
                         await PollOutputConfigAsync();
+                        await PollFunctionSelectAsync();
                         await PollSlopeSettingsAsync();
                         await PollInputAdjustmentsAsync();
                         await PollCTCurrentAsync();
@@ -638,6 +642,63 @@ namespace DTE10T_WPF
             {
                 TempCards[i].SV = Math.Round(svs[i], 1);
                 PVSVList[i].SV = Math.Round(svs[i], 1);
+            }
+            stepStart.Stop();
+        }
+
+        // ========== 功能选择参数 (三) 轮询 ==========
+        private async Task PollFunctionSelectAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            for(int i = 0; i < 8; i++)
+            {
+                // 输入传感器类型 H10A0~H10A7
+                ushort sensorVal = await _modbus!.ReadHoldingRegisterAsync(0x10A0 + i);
+                FunctionSelectList[i].SensorType = sensorVal < SensorTypeNames.Length
+                    ? SensorTypeNames[sensorVal] : $"未知({sensorVal})";
+
+                // OUT1 输出功能 H10A8~H10AF
+                ushort out1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10A8 + i);
+                FunctionSelectList[i].Out1Function = out1Ctrl < OutFunctionNames.Length
+                    ? OutFunctionNames[out1Ctrl] : $"未知({out1Ctrl})";
+
+                // SUB1 输出功能 H10B0~H10B7 (相当于 OUT2)
+                ushort sub1Ctrl = await _modbus!.ReadHoldingRegisterAsync(0x10B0 + i);
+                FunctionSelectList[i].Sub1Function = sub1Ctrl < OutFunctionNames.Length
+                    ? OutFunctionNames[sub1Ctrl] : $"未知({sub1Ctrl})";
+
+                // 控制方式 H10B8~H10BF
+                ushort ctrlMode = await _modbus!.ReadHoldingRegisterAsync(0x10B8 + i);
+                FunctionSelectList[i].ControlMode = ctrlMode < ControlModeNames.Length
+                    ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
+
+                // 警报一输出模式 H10C0~H10C7
+                ushort alarm1Mode = await _modbus!.ReadHoldingRegisterAsync(0x10C0 + i);
+                FunctionSelectList[i].Alarm1Mode = alarm1Mode < AlarmModeNames.Length
+                    ? AlarmModeNames[alarm1Mode] : $"未知({alarm1Mode})";
+
+                // 警报二输出模式 H10C8~H10CF
+                ushort alarm2Mode = await _modbus!.ReadHoldingRegisterAsync(0x10C8 + i);
+                FunctionSelectList[i].Alarm2Mode = alarm2Mode < AlarmModeNames.Length
+                    ? AlarmModeNames[alarm2Mode] : $"未知({alarm2Mode})";
+
+                // 加热/冷却控制周期 H10D0~H10D7
+                ushort ctrlCycle = await _modbus!.ReadHoldingRegisterAsync(0x10D0 + i);
+                FunctionSelectList[i].ControlCycle = ctrlCycle;
+
+                // 控制执行/停止设定 H10D8~H10DF
+                ushort ctrlExec = await _modbus!.ReadHoldingRegisterAsync(0x10D8 + i);
+                FunctionSelectList[i].ControlExecStatus = ctrlExec < ControlExecNames.Length
+                    ? ControlExecNames[ctrlExec] : $"未知({ctrlExec})";
+
+                // PID 自动调谐状态 H10E0~H10E7
+                ushort atStatus = await _modbus!.ReadHoldingRegisterAsync(0x10E0 + i);
+                FunctionSelectList[i].ATEnabled = atStatus == 1;
+
+                // 设定正负比例输出 H10E8~H10EF
+                ushort propSign = await _modbus!.ReadHoldingRegisterAsync(0x10E8 + i);
+                FunctionSelectList[i].ProportionSign = propSign < ProportionSignNames.Length
+                    ? ProportionSignNames[propSign] : $"未知({propSign})";
             }
             stepStart.Stop();
         }

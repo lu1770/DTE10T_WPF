@@ -3050,6 +3050,30 @@ namespace DTE10T_WPF.Services
         }
 
         ///<summary>
+        /// 设置警报二输出模式 (0~13)</summary>
+        public async Task<bool> SetAlarm2ModeAsync(int channel, int mode)
+        {
+            int addr = 0x10C8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)mode);
+        }
+
+        ///<summary>
+        /// 设置传感器类型 (0~14)</summary>
+        public async Task<bool> WriteSensorTypeAsync(int channel, int sensorType)
+        {
+            int addr = 0x10A0 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)sensorType);
+        }
+
+        ///<summary>
+        /// 设置正负比例输出 (0=正, 1=负/斜率)</summary>
+        public async Task<bool> WriteProportionSignAsync(int channel, int sign)
+        {
+            int addr = 0x10E8 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)sign);
+        }
+
+        ///<summary>
         /// 设置通道禁能/使能 (H10F6, Bit0=CH1 ... Bit7=CH8)</summary>
         public async Task<bool> SetChannelDisableAsync(ushort bitmask)
         { return await WriteSingleRegisterAsync(0x10F6, bitmask); }
