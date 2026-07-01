@@ -489,35 +489,65 @@ namespace DTE10T_WPF
             for(int i = 0; i < 8; i++)
             {
                 ushort pbValue = await _modbus!.ReadHoldingRegisterAsync(0x1028 + i);
-                PIDList[i].Pb = Math.Round(pbValue * 0.1, 1);
+                double newPb = Math.Round(pbValue * 0.1, 1);
+                if(PIDList[i].Pb != newPb)
+                {
+                    PIDList[i].Pb = newPb;
+                }
 
                 ushort tiValue = await _modbus!.ReadHoldingRegisterAsync(0x1030 + i);
-                //Logger.Debug($"tiValue: {tiValue:X4}");
-                // 2026-06-30 15:54:37,350 [1] DEBUG DTE10T_WPF.Logger - tiValue: 006B
-                PIDList[i].Ti = _modbus!.ParseInt(tiValue, 1);
+                var newTi = _modbus!.ParseInt(tiValue, 1);
+                if(PIDList[i].Ti != newTi)
+                {
+                    PIDList[i].Ti = newTi;
+                }
 
                 ushort tdValue = await _modbus!.ReadHoldingRegisterAsync(0x1038 + i);
-                //Logger.Debug($"tdValue: {tdValue:X4}");
-                PIDList[i].Td = _modbus!.ParseInt(tdValue, 1);
+                var newTd = _modbus!.ParseInt(tdValue, 1);
+                if(PIDList[i].Td != newTd)
+                {
+                    PIDList[i].Td = newTd;
+                }
 
                 ushort intValue = await _modbus!.ReadHoldingRegisterAsync(0x1040 + i);
-                PIDList[i].Integral = Math.Round(intValue * 0.1, 1);
+                double newIntegral = Math.Round(intValue * 0.1, 1);
+                if(PIDList[i].Integral != newIntegral)
+                {
+                    PIDList[i].Integral = newIntegral;
+                }
 
                 ushort o1Value = await _modbus!.ReadHoldingRegisterAsync(0x1070 + i);
-                PIDList[i].Out1 = Math.Round(o1Value * 0.1, 1);
+                double newOut1 = Math.Round(o1Value * 0.1, 1);
+                if(PIDList[i].Out1 != newOut1)
+                {
+                    PIDList[i].Out1 = newOut1;
+                }
 
                 ushort o2Value = await _modbus!.ReadHoldingRegisterAsync(0x1078 + i);
-                PIDList[i].Out2 = Math.Round(o2Value * 0.1, 1);
+                double newOut2 = Math.Round(o2Value * 0.1, 1);
+                if(PIDList[i].Out2 != newOut2)
+                {
+                    PIDList[i].Out2 = newOut2;
+                }
 
                 ushort ctrlMode = await _modbus!.ReadHoldingRegisterAsync(0x10B8 + i);
-                PIDList[i].ControlMode = ctrlMode < ControlModeNames.Length
+                string newControlMode = ctrlMode < ControlModeNames.Length
                     ? ControlModeNames[ctrlMode] : $"未知({ctrlMode})";
+                if(PIDList[i].ControlMode != newControlMode)
+                {
+                    PIDList[i].ControlMode = newControlMode;
+                }
 
                 ushort atStatus = await _modbus!.ReadHoldingRegisterAsync(0x10E0 + i);
-                PIDList[i].ATEnabled = atStatus == 1;
+                bool newATEnabled = atStatus == 1;
+                if(PIDList[i].ATEnabled != newATEnabled)
+                {
+                    PIDList[i].ATEnabled = newATEnabled;
+                }
             }
             stepStart.Stop();
         }
+
 
         private async Task PollPVValuesAsync()
         {

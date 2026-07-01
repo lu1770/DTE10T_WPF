@@ -1,5 +1,6 @@
 using OxyPlot;
 using OxyPlot.Axes;
+using OxyPlot.Legends;
 using OxyPlot.Series;
 using OxyPlot.SkiaSharp;
 using SkiaSharp;
@@ -201,7 +202,14 @@ namespace DTE10T_WPF
                 Background = OxyColors.White,
                 PlotAreaBorderColor = OxyColors.LightGray,
                 TitleFont = "微软雅黑",
-                TitleFontSize = 14
+                TitleFontSize = 14,
+                PlotType = PlotType.XY,
+                Legends = { new Legend
+                            {
+                                LegendPosition = LegendPosition.TopRight,
+                                LegendFont = "微软雅黑",
+                                LegendFontSize = 11
+                            } }
             };
 
             var timeAxis = new LinearAxis
