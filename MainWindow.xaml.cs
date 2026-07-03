@@ -1,7 +1,5 @@
 using DTE10T_WPF.Services;
 using OxyPlot;
-using OxyPlot.Axes;
-using OxyPlot.Series;
 using OxyPlot.SkiaSharp;
 using SkiaSharp;
 using System;
@@ -41,18 +39,9 @@ namespace DTE10T_WPF
             "2400", "4800", "9600", "19200", "38400", "57600", "115200"
         };
 
-        // 各通道曲线颜色
-        private static readonly OxyColor[] ChannelColors = new[]
-        {
-            OxyColors.Red,
-            OxyColors.Blue,
-            OxyColors.Green,
-            OxyColors.Orange,
-            OxyColors.Purple,
-            OxyColors.Cyan,
-            OxyColors.Magenta,
-            OxyColors.Gold
-        };
+        // ========== OxyPlot 图表管理 ==========
+        private OxyPlotChartManager? _chartManager;
+        private readonly List<double>[] _historyPVValues = new List<double>[8];
 
         // 控制执行/停止状态名称
         private static readonly string[] ControlExecNames = new[]
@@ -94,11 +83,6 @@ namespace DTE10T_WPF
             "L型热电偶", "U型热电偶", "TXK型", "白金JPt100",
             "白金Pt100", "Ni120", "Cu50"
         };
-        private LineSeries[]? _channelSeries;
-        private DateTime _chartStartTime;
-        private double _chartTimeOffset = 0;
-        private readonly List<double>[] _historyPVValues = new List<double>[8];
-        private bool _isChartPaused = false;
         // ========== 配置管理 ==========
         private bool _isConfigSaving = false;
         private bool _isConnected = false;
@@ -110,19 +94,13 @@ namespace DTE10T_WPF
 
         // ========== Modbus 服务 ==========
         private ModbusService? _modbus;
-        private LineSeries[]? _out1Series;
-        private LineSeries[]? _out2Series;
         private System.Threading.Timer? _pollTimer;
         private int _readCount = 0;
         private List<RecordedDataPoint> _recordedData = new();
         private DateTime _recordStartTime;
-        // ========== OxyPlot 图表相关 ==========
-        private PlotModel? _temperaturePlotModel;
         // ========== 临时CSV文件保存 ==========
         private int _tempFileCounter = 0;
         private string _tempFolder = string.Empty;
-        private LineSeries? _tempLowerLine;
-        private LineSeries? _tempUpperLine;
 
         public MainWindow()
         {
@@ -130,7 +108,7 @@ namespace DTE10T_WPF
             InitAllGrids();
             icTempCards.ItemsSource = TempCards;
             LoadAvailablePorts();
-            InitializeChart();
+            InitializeChartManager();
             DataContext = this;
 
             for(int i = 0; i < 8; i++)
@@ -148,6 +126,25 @@ namespace DTE10T_WPF
                     await StartRecordAsync();
                 });
             });
+        }
+
+        private void InitializeChartManager()
+        {
+            _chartManager = new OxyPlotChartManager(
+                () => chkShowOut1?.IsChecked ?? false,
+                () => chkShowOut2?.IsChecked ?? false,
+                i => (FindName($"chkCH{i + 1}") as CheckBox)?.IsChecked ?? false,
+                i => TempCards[i].PV,
+                i => PVSVList[i].Out1,
+                i => PVSVList[i].Out2
+            );
+            _chartManager.InitializeChart();
+        }
+
+        private bool IsChannelVisible(int channelIndex)
+        {
+            CheckBox? chkBox = FindName($"chkCH{channelIndex + 1}") as CheckBox;
+            return chkBox?.IsChecked ?? false;
         }
 
         private void AttachListenersToCollection<T>(ObservableCollection<T> collection) where T : INotifyPropertyChanged
@@ -947,80 +944,7 @@ namespace DTE10T_WPF
 
         private void ToggleChartPause()
         {
-            if(_isChartPaused || _channelSeries == null || _temperaturePlotModel == null)
-            {
-                return;
-            }
-
-            RecordDataPoint();
-
-            double currentTime = (DateTime.Now - _chartStartTime).TotalSeconds + _chartTimeOffset;
-            bool showOut1 = chkShowOut1?.IsChecked ?? false;
-            bool showOut2 = chkShowOut2?.IsChecked ?? false;
-
-            for(int i = 0; i < 8; i++)
-            {
-                CheckBox? chkBox = FindName($"chkCH{i + 1}") as CheckBox;
-                bool isVisible = chkBox?.IsChecked ?? false;
-                _channelSeries[i].IsVisible = isVisible;
-
-                if(!isVisible)
-                {
-                    continue;
-                }
-
-                double pvValue = TempCards[i].PV;
-                _channelSeries[i].Points.Add(new DataPoint(currentTime, pvValue));
-
-                if(_channelSeries[i].Points.Count > MaxDataPoints)
-                {
-                    _channelSeries[i].Points.RemoveAt(0);
-                }
-
-                // 更新输出1量曲线
-                if(_out1Series != null)
-                {
-                    _out1Series[i].IsVisible = showOut1 && isVisible;
-                    double out1Value = PVSVList[i].Out1;
-                    _out1Series[i].Points.Add(new DataPoint(currentTime, out1Value));
-
-                    if(_out1Series[i].Points.Count > MaxDataPoints)
-                    {
-                        _out1Series[i].Points.RemoveAt(0);
-                    }
-                }
-
-                // 更新输出2量曲线
-                if(_out2Series != null)
-                {
-                    _out2Series[i].IsVisible = showOut2 && isVisible;
-                    double out2Value = PVSVList[i].Out2;
-                    _out2Series[i].Points.Add(new DataPoint(currentTime, out2Value));
-
-                    if(_out2Series[i].Points.Count > MaxDataPoints)
-                    {
-                        _out2Series[i].Points.RemoveAt(0);
-                    }
-                }
-            }
-
-            if(_temperaturePlotModel.Axes.Count > 0)
-            {
-                var timeAxis = _temperaturePlotModel.Axes[0] as LinearAxis;
-                if(timeAxis != null)
-                {
-                    timeAxis.Minimum = currentTime - 60;
-                    timeAxis.Maximum = currentTime + 5;
-                    if(timeAxis.Minimum < 0)
-                    {
-                        timeAxis.Minimum = 0;
-                    }
-                }
-            }
-
-            UpdateTempRangeLines(currentTime);
-
-            _temperaturePlotModel.InvalidatePlot(true);
+            _chartManager?.ToggleChartPause();
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -1091,6 +1015,6 @@ namespace DTE10T_WPF
         // ========== 数据集合 ==========
         public ObservableCollection<TempCardModel> TempCards { get; } = new();
 
-        public PlotModel? TemperaturePlotModel => _temperaturePlotModel;
+        public PlotModel? TemperaturePlotModel => _chartManager?.TemperaturePlotModel;
     }
 }
