@@ -19,6 +19,12 @@ namespace DTE10T_WPF
             {
                 return false;
             }
+
+            if(IsAnyDataGridEditing())
+            {
+                return false;
+            }
+
             var ws = Stopwatch.StartNew();
             try
             {
@@ -349,7 +355,13 @@ namespace DTE10T_WPF
 
             try
             {
-                await Dispatcher.InvokeAsync(async () => await PollAllDataAsync());
+                await Dispatcher.InvokeAsync(async () => {
+                    if(IsAnyDataGridEditing())
+                    {
+                        return;
+                    }
+                    await PollAllDataAsync();
+                });
             }
             catch(Exception ex)
             {

@@ -1047,5 +1047,26 @@ namespace DTE10T_WPF
         public ObservableCollection<PointRWModel> PointRWList { get; } = new();
 
         public ObservableCollection<CTModel> CTReadonlyList { get; } = new();
+
+        private int _editingCount = 0;
+
+        private bool IsAnyDataGridEditing()
+        {
+            return _editingCount > 0;
+        }
+
+        private void DataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            _editingCount++;
+        }
+
+        private void DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            _editingCount--;
+            if(_editingCount < 0)
+            {
+                _editingCount = 0;
+            }
+        }
     }
 }
