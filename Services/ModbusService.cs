@@ -3737,19 +3737,19 @@ namespace DTE10T_WPF.Services
 
         public async Task<bool> WriteHRFixedOutputAsync(int channel, double value)
         {
-            int addr = 0x19E8 + channel;
+            int addr = 0x1968 + channel;
             return await WriteSingleRegisterAsync(addr, (ushort)value);
         }
 
         public async Task<bool> WriteHRLimitTempAsync(int channel, double value)
         {
-            int addr = 0x19E0 + channel;
+            int addr = 0x1960 + channel;
             return await WriteSingleRegisterAsync(addr, (ushort)value);
         }
 
         public async Task<bool> WriteHRSoakTimeAsync(int channel, double value)
         {
-            int addr = 0x19F0 + channel;
+            int addr = 0x19B0 + channel;
             return await WriteSingleRegisterAsync(addr, (ushort)value);
         }
 
