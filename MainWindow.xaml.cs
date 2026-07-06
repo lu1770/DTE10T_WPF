@@ -851,6 +851,31 @@ namespace DTE10T_WPF
                 StepList.Add(new() { Pattern = "样式0", Step = stepNames[s], TargetTemp = 100 + s * 50, RunTime = 30 });
             }
 
+            // 点位读写参数
+            for(int ch = 1; ch <= 8; ch++)
+            {
+                string chName = $"CH{ch}";
+                PointRWList.Add(new()
+                {
+                    Channel = chName,
+                    Integral = 0,
+                    PropComp = 0,
+                    OutRatio = 100,
+                    OverlapTemp = 0,
+                    Sensitivity1 = 0,
+                    Sensitivity2 = 0,
+                    AnOutUpper = 100,
+                    AnOutLower = 0,
+                    TimeUnit = 0
+                });
+            }
+
+            // CT 只读列表 (4通道)
+            for(int ch = 1; ch <= 4; ch++)
+            {
+                CTReadonlyList.Add(new() { Channel = $"CH{ch}" });
+            }
+
             // 绑定数据源
             dgPVSV.ItemsSource = PVSVList;
             dgPID.ItemsSource = PIDList;
@@ -865,6 +890,8 @@ namespace DTE10T_WPF
             dgProgramPattern.ItemsSource = PatternList;
             dgProgramSteps.ItemsSource = StepList;
             dgFunctionSelect.ItemsSource = FunctionSelectList;
+            dgPointRW.ItemsSource = PointRWList;
+            dgCTReadonly.ItemsSource = CTReadonlyList;
         }
 
         // ========== 工具方法 ==========
@@ -1016,5 +1043,9 @@ namespace DTE10T_WPF
         public ObservableCollection<TempCardModel> TempCards { get; } = new();
 
         public PlotModel? TemperaturePlotModel => _chartManager?.TemperaturePlotModel;
+
+        public ObservableCollection<PointRWModel> PointRWList { get; } = new();
+
+        public ObservableCollection<CTModel> CTReadonlyList { get; } = new();
     }
 }

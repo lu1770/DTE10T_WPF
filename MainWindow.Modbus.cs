@@ -59,6 +59,7 @@ namespace DTE10T_WPF
                         await PollCommParamsAsync();
                         break;
                     case 8:
+                        await PollPointRWParamsAsync();
                         break;
                     default:
                         await PollPIDParametersAsync();
@@ -136,6 +137,47 @@ namespace DTE10T_WPF
                 {
                     btnRefresh.IsEnabled = true;
                 }
+            }
+        }
+
+        private async void BtnWriteGlobalParams_Click(object sender, RoutedEventArgs e)
+        {
+            if(!_isConnected || _modbus == null)
+            {
+                MessageBox.Show("请先连接到设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                if(int.TryParse(txtTempUnit.Text, out int tempUnit))
+                {
+                    await _modbus.WriteTempUnitAsync(tempUnit);
+                }
+
+                if(int.TryParse(txtSpecialFuncEnable.Text, out int specialFunc))
+                {
+                    await _modbus.WriteSpecialFuncEnableAsync(specialFunc);
+                }
+
+                if(int.TryParse(txtOutReverse.Text, out int outReverse))
+                {
+                    await _modbus.WriteOutReverseAsync(outReverse);
+                }
+
+                if(int.TryParse(txtFuncFlags.Text, out int funcFlags))
+                {
+                    await _modbus.WriteFuncFlagsAsync(funcFlags);
+                }
+
+                txtStatus.Text = "已写入全局参数";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                Logger.Error($"[GlobalParams] 写入失败: {ex.Message}", ex);
             }
         }
 
@@ -454,6 +496,61 @@ namespace DTE10T_WPF
             ushort frLow = await _modbus!.ReadHoldingRegisterAsync(0x10FA);
             InputAdjList[0].FilterRange = Math.Round(ParseFloat(frHigh, frLow, 0.1), 1);
 
+            stepStart.Stop();
+        }
+
+        private async Task PollPointRWParamsAsync()
+        {
+            var stepStart = Stopwatch.StartNew();
+            try
+            {
+                double[] integral = await _modbus!.ReadIntegralAsync();
+                double[] propComp = await _modbus!.ReadPropCompAsync();
+                double[] outRatio = await _modbus!.ReadOutRatioAsync();
+                double[] overlapTemp = await _modbus!.ReadOverlapTempAsync();
+                double[] sensitivity1 = await _modbus!.ReadSensitivity1Async();
+                double[] sensitivity2 = await _modbus!.ReadSensitivity2Async();
+                double[] anOutUpper = await _modbus!.ReadAnOutUpperAsync();
+                double[] anOutLower = await _modbus!.ReadAnOutLowerAsync();
+                int[] timeUnit = await _modbus!.ReadTimeUnitAsync();
+
+                for(int i = 0; i < 8; i++)
+                {
+                    PointRWList[i].Integral = integral[i];
+                    PointRWList[i].PropComp = propComp[i];
+                    PointRWList[i].OutRatio = outRatio[i];
+                    PointRWList[i].OverlapTemp = overlapTemp[i];
+                    PointRWList[i].Sensitivity1 = sensitivity1[i];
+                    PointRWList[i].Sensitivity2 = sensitivity2[i];
+                    PointRWList[i].AnOutUpper = anOutUpper[i];
+                    PointRWList[i].AnOutLower = anOutLower[i];
+                    PointRWList[i].TimeUnit = timeUnit[i];
+                }
+
+                double[] ctStatic = await _modbus!.ReadCTStaticAsync();
+                double[] ctDynamic = await _modbus!.ReadCTDynamicAsync();
+                for(int i = 0; i < 4; i++)
+                {
+                    CTReadonlyList[i].CTStatic = (int)Math.Round(ctStatic[i]);
+                    CTReadonlyList[i].CTDynamic = (int)Math.Round(ctDynamic[i]);
+                }
+
+                int tempUnit = await _modbus!.ReadTempUnitAsync();
+                txtTempUnit.Text = tempUnit.ToString();
+
+                int specialFunc = await _modbus!.ReadSpecialFuncEnableAsync();
+                txtSpecialFuncEnable.Text = specialFunc.ToString();
+
+                int outReverse = await _modbus!.ReadOutReverseAsync();
+                txtOutReverse.Text = outReverse.ToString();
+
+                int funcFlags = await _modbus!.ReadFuncFlagsAsync();
+                txtFuncFlags.Text = funcFlags.ToString();
+            }
+            catch(Exception ex)
+            {
+                Logger.Error($"[PollPointRW] 轮询点位读写参数异常: {ex.Message}", ex);
+            }
             stepStart.Stop();
         }
 

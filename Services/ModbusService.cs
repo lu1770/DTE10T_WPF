@@ -839,6 +839,302 @@ namespace DTE10T_WPF.Services
                 Unit = "%"
             },
 
+            // OUT1/OUT2 输出比例带比值 H1050~H1057 (INT16, 0.1%)
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH1",
+                Address = 0x1050,
+                Description = "CH1 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH2",
+                Address = 0x1051,
+                Description = "CH2 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH3",
+                Address = 0x1052,
+                Description = "CH3 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH4",
+                Address = 0x1053,
+                Description = "CH4 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH5",
+                Address = 0x1054,
+                Description = "CH5 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH6",
+                Address = 0x1055,
+                Description = "CH6 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH7",
+                Address = 0x1056,
+                Description = "CH7 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "OutRatio_CH8",
+                Address = 0x1057,
+                Description = "CH8 输出比例带比值",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+
+            // 输出重叠温度范围 H1058~H105F (INT16, 0.1℃)
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH1",
+                Address = 0x1058,
+                Description = "CH1 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH2",
+                Address = 0x1059,
+                Description = "CH2 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH3",
+                Address = 0x105A,
+                Description = "CH3 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH4",
+                Address = 0x105B,
+                Description = "CH4 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH5",
+                Address = 0x105C,
+                Description = "CH5 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH6",
+                Address = 0x105D,
+                Description = "CH6 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH7",
+                Address = 0x105E,
+                Description = "CH7 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+            new ModbusRegister
+            {
+                Name = "OverlapTemp_CH8",
+                Address = 0x105F,
+                Description = "CH8 输出重叠温度范围",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "℃"
+            },
+
+            // 第一组输出调节感度 H1060~H1067 (INT16, 0.1%)
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH1",
+                Address = 0x1060,
+                Description = "CH1 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH2",
+                Address = 0x1061,
+                Description = "CH2 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH3",
+                Address = 0x1062,
+                Description = "CH3 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH4",
+                Address = 0x1063,
+                Description = "CH4 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH5",
+                Address = 0x1064,
+                Description = "CH5 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH6",
+                Address = 0x1065,
+                Description = "CH6 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH7",
+                Address = 0x1066,
+                Description = "CH7 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity1_CH8",
+                Address = 0x1067,
+                Description = "CH8 第一组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+
+            // 第二组输出调节感度 H1068~H106F (INT16, 0.1%)
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH1",
+                Address = 0x1068,
+                Description = "CH1 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH2",
+                Address = 0x1069,
+                Description = "CH2 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH3",
+                Address = 0x106A,
+                Description = "CH3 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH4",
+                Address = 0x106B,
+                Description = "CH4 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH5",
+                Address = 0x106C,
+                Description = "CH5 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH6",
+                Address = 0x106D,
+                Description = "CH6 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH7",
+                Address = 0x106E,
+                Description = "CH7 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "Sensitivity2_CH8",
+                Address = 0x106F,
+                Description = "CH8 第二组输出调节感度",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+
             // 输出1量(读/写) H1070~H1077
             new ModbusRegister
             {
@@ -1165,6 +1461,154 @@ namespace DTE10T_WPF.Services
                 DataType = "FLOAT32",
                 ScalingFactor = 1,
                 Unit = "℃"
+            },
+
+            // 模拟输出上限微调 H1090~H1097 (INT16, 0.1%)
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH1",
+                Address = 0x1090,
+                Description = "CH1 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH2",
+                Address = 0x1091,
+                Description = "CH2 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH3",
+                Address = 0x1092,
+                Description = "CH3 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH4",
+                Address = 0x1093,
+                Description = "CH4 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH5",
+                Address = 0x1094,
+                Description = "CH5 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH6",
+                Address = 0x1095,
+                Description = "CH6 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH7",
+                Address = 0x1096,
+                Description = "CH7 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutUpper_CH8",
+                Address = 0x1097,
+                Description = "CH8 模拟输出上限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+
+            // 模拟输出下限微调 H1098~H109F (INT16, 0.1%)
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH1",
+                Address = 0x1098,
+                Description = "CH1 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH2",
+                Address = 0x1099,
+                Description = "CH2 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH3",
+                Address = 0x109A,
+                Description = "CH3 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH4",
+                Address = 0x109B,
+                Description = "CH4 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH5",
+                Address = 0x109C,
+                Description = "CH5 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH6",
+                Address = 0x109D,
+                Description = "CH6 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH7",
+                Address = 0x109E,
+                Description = "CH7 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
+            },
+            new ModbusRegister
+            {
+                Name = "AnOutLower_CH8",
+                Address = 0x109F,
+                Description = "CH8 模拟输出下限微调",
+                DataType = "INT16",
+                ScalingFactor = 0.1,
+                Unit = "%"
             },
 
             // 输入传感器类型 H10A0~H10A7 (INT16)
@@ -2001,6 +2445,80 @@ namespace DTE10T_WPF.Services
                 Unit = "℃/min"
             },
 
+            // 时间单位选择 H1978~H197F (INT16)
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH1",
+                Address = 0x1978,
+                Description = "CH1 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH2",
+                Address = 0x1979,
+                Description = "CH2 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH3",
+                Address = 0x197A,
+                Description = "CH3 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH4",
+                Address = 0x197B,
+                Description = "CH4 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH5",
+                Address = 0x197C,
+                Description = "CH5 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH6",
+                Address = 0x197D,
+                Description = "CH6 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH7",
+                Address = 0x197E,
+                Description = "CH7 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+            new ModbusRegister
+            {
+                Name = "TimeUnit_CH8",
+                Address = 0x197F,
+                Description = "CH8 时间单位选择",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+
             // ===== 输出最大值 H1980~H1987 (INT16, %) =====
             new ModbusRegister
             {
@@ -2631,6 +3149,28 @@ namespace DTE10T_WPF.Services
                 DataType = "INT16",
                 ScalingFactor = 1,
                 Unit = "min"
+            },
+
+            // ===== 特殊功能启用 H47F1 (INT16) =====
+            new ModbusRegister
+            {
+                Name = "SpecialFuncEnable",
+                Address = 0x47F1,
+                Description = "特殊功能启用",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
+            },
+
+            // ===== 输出反向设定 H4821 (INT16) =====
+            new ModbusRegister
+            {
+                Name = "OutReverse",
+                Address = 0x4821,
+                Description = "输出反向设定",
+                DataType = "INT16",
+                ScalingFactor = 1,
+                Unit = string.Empty
             },
 
             // ===== 功能旗标 H4824 (INT16, Bit0~Bit7) =====
@@ -3367,6 +3907,203 @@ namespace DTE10T_WPF.Services
             int addr = 0x1030 + channel;
             ushort regValue = (ushort)(value);
             return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteIntegralAsync(int channel, double value)
+        {
+            int addr = 0x1040 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WritePropCompAsync(int channel, double value)
+        {
+            int addr = 0x1048 + channel;
+            ushort[] regs = FloatToUshortArray((float)value);
+            return await WriteMultipleRegistersAsync(addr, regs);
+        }
+
+        public async Task<bool> WriteOutRatioAsync(int channel, double value)
+        {
+            int addr = 0x1050 + channel;
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteOverlapTempAsync(int channel, double value)
+        {
+            int addr = 0x1058 + channel;
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteSensitivity1Async(int channel, double value)
+        {
+            int addr = 0x1060 + channel;
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteSensitivity2Async(int channel, double value)
+        {
+            int addr = 0x1068 + channel;
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteAnOutUpperAsync(int channel, double value)
+        {
+            int addr = 0x1090 + channel;
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteAnOutLowerAsync(int channel, double value)
+        {
+            int addr = 0x1098 + channel;
+            ushort regValue = (ushort)(value * 10);
+            return await WriteSingleRegisterAsync(addr, regValue);
+        }
+
+        public async Task<bool> WriteTempUnitAsync(int value)
+        {
+            return await WriteSingleRegisterAsync(0x10F0, (ushort)value);
+        }
+
+        public async Task<bool> WriteTimeUnitAsync(int channel, int value)
+        {
+            int addr = 0x1978 + channel;
+            return await WriteSingleRegisterAsync(addr, (ushort)value);
+        }
+
+        public async Task<bool> WriteSpecialFuncEnableAsync(int value)
+        {
+            return await WriteSingleRegisterAsync(0x47F1, (ushort)value);
+        }
+
+        public async Task<bool> WriteFuncFlagsAsync(int value)
+        {
+            return await WriteSingleRegisterAsync(0x4824, (ushort)value);
+        }
+
+        public async Task<bool> WriteOutReverseAsync(int value)
+        {
+            return await WriteSingleRegisterAsync(0x4821, (ushort)value);
+        }
+
+        public async Task<double[]> ReadIntegralAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1040, 16);
+            double[] values = new double[8];
+            for(int i = 0; i < 8; i++)
+            {
+                values[i] = ParseFloatWithScaling(regs[i * 2], regs[i * 2 + 1], 0.1);
+            }
+            return values;
+        }
+
+        public async Task<double[]> ReadPropCompAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1048, 16);
+            double[] values = new double[8];
+            for(int i = 0; i < 8; i++)
+            {
+                values[i] = ParseFloatWithScaling(regs[i * 2], regs[i * 2 + 1], 0.1);
+            }
+            return values;
+        }
+
+        public async Task<double[]> ReadOutRatioAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1050, 8);
+            return ParseInt16s(regs, 8, 0.1);
+        }
+
+        public async Task<double[]> ReadOverlapTempAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1058, 8);
+            return ParseInt16s(regs, 8, 0.1);
+        }
+
+        public async Task<double[]> ReadSensitivity1Async()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1060, 8);
+            return ParseInt16s(regs, 8, 0.1);
+        }
+
+        public async Task<double[]> ReadSensitivity2Async()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1068, 8);
+            return ParseInt16s(regs, 8, 0.1);
+        }
+
+        public async Task<double[]> ReadAnOutUpperAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1090, 8);
+            return ParseInt16s(regs, 8, 0.1);
+        }
+
+        public async Task<double[]> ReadAnOutLowerAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1098, 8);
+            return ParseInt16s(regs, 8, 0.1);
+        }
+
+        public async Task<int> ReadTempUnitAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x10F0, 1);
+            return regs[0];
+        }
+
+        public async Task<int[]> ReadTimeUnitAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x1978, 8);
+            int[] values = new int[8];
+            for(int i = 0; i < 8; i++)
+            {
+                values[i] = regs[i];
+            }
+            return values;
+        }
+
+        public async Task<double[]> ReadCTStaticAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x19A0, 8);
+            double[] values = new double[4];
+            for(int i = 0; i < 4; i++)
+            {
+                values[i] = ParseFloatWithScaling(regs[i * 2], regs[i * 2 + 1], 1);
+            }
+            return values;
+        }
+
+        public async Task<double[]> ReadCTDynamicAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x19A4, 8);
+            double[] values = new double[4];
+            for(int i = 0; i < 4; i++)
+            {
+                values[i] = ParseFloatWithScaling(regs[i * 2], regs[i * 2 + 1], 1);
+            }
+            return values;
+        }
+
+        public async Task<int> ReadSpecialFuncEnableAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x47F1, 1);
+            return regs[0];
+        }
+
+        public async Task<int> ReadOutReverseAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x4821, 1);
+            return regs[0];
+        }
+
+        public async Task<int> ReadFuncFlagsAsync()
+        {
+            ushort[] regs = await ReadHoldingRegistersAsync(0x4824, 1);
+            return regs[0];
         }
 
         public bool IsConnected => _isConnected;

@@ -1501,6 +1501,184 @@
                 </Grid>
             </TabItem>
 
+            <!--  Tab9: 点位读写  -->
+            <TabItem Header="📍 点位读写">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+                        <!--  通道参数  -->
+                        <GroupBox Margin="4" Header="通道参数 (H1040~H106F, H1090~H109F, H1978~H197F)">
+                            <DataGrid
+                                x:Name="dgPointRW"
+                                Height="400"
+                                AlternatingRowBackground="{StaticResource RowEvenBrush}"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                CellEditEnding="DgPointRW_CellEditEnding"
+                                GridLinesVisibility="All"
+                                RowBackground="{StaticResource RowOddBrush}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn
+                                        Width="60"
+                                        Binding="{Binding Channel}"
+                                        Header="通道"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Width="110"
+                                        Binding="{Binding Integral, StringFormat=F1}"
+                                        Header="积分量 (%)" />
+                                    <DataGridTextColumn
+                                        Width="130"
+                                        Binding="{Binding PropComp, StringFormat=F1}"
+                                        Header="比例误差补偿 (%)" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding OutRatio, StringFormat=F1}"
+                                        Header="输出比例带 (%)" />
+                                    <DataGridTextColumn
+                                        Width="130"
+                                        Binding="{Binding OverlapTemp, StringFormat=F1}"
+                                        Header="重叠温度 (℃)" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding Sensitivity1, StringFormat=F1}"
+                                        Header="第一组感度 (%)" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding Sensitivity2, StringFormat=F1}"
+                                        Header="第二组感度 (%)" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding AnOutUpper, StringFormat=F1}"
+                                        Header="模拟输出上限 (%)" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding AnOutLower, StringFormat=F1}"
+                                        Header="模拟输出下限 (%)" />
+                                    <DataGridTextColumn
+                                        Width="90"
+                                        Binding="{Binding TimeUnit, StringFormat=F0}"
+                                        Header="时间单位" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <!--  全局参数  -->
+                        <GroupBox Margin="4" Header="全局参数 (H10F0, H47F1, H4821, H4824)">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel
+                                    Grid.Column="0"
+                                    Margin="8"
+                                    Orientation="Horizontal">
+                                    <TextBlock
+                                        Width="120"
+                                        VerticalAlignment="Center"
+                                        Text="温度单位:" />
+                                    <TextBox
+                                        x:Name="txtTempUnit"
+                                        Width="60"
+                                        Margin="4,0"
+                                        Padding="2"
+                                        TextAlignment="Center"
+                                        ToolTip="0=℃, 1=°F" />
+                                </StackPanel>
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Margin="8"
+                                    Orientation="Horizontal">
+                                    <TextBlock
+                                        Width="120"
+                                        VerticalAlignment="Center"
+                                        Text="特殊功能启用:" />
+                                    <TextBox
+                                        x:Name="txtSpecialFuncEnable"
+                                        Width="60"
+                                        Margin="4,0"
+                                        Padding="2"
+                                        TextAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel
+                                    Grid.Column="2"
+                                    Margin="8"
+                                    Orientation="Horizontal">
+                                    <TextBlock
+                                        Width="120"
+                                        VerticalAlignment="Center"
+                                        Text="输出反向设定:" />
+                                    <TextBox
+                                        x:Name="txtOutReverse"
+                                        Width="60"
+                                        Margin="4,0"
+                                        Padding="2"
+                                        TextAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel
+                                    Grid.Column="3"
+                                    Margin="8"
+                                    Orientation="Horizontal">
+                                    <TextBlock
+                                        Width="120"
+                                        VerticalAlignment="Center"
+                                        Text="功能旗标:" />
+                                    <TextBox
+                                        x:Name="txtFuncFlags"
+                                        Width="60"
+                                        Margin="4,0"
+                                        Padding="2"
+                                        TextAlignment="Center" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="4"
+                                    Width="100"
+                                    Margin="8"
+                                    HorizontalAlignment="Right"
+                                    Click="BtnWriteGlobalParams_Click"
+                                    Content="写入全局参数" />
+                            </Grid>
+                        </GroupBox>
+
+                        <!--  CT 量测值 (只读)  -->
+                        <GroupBox Margin="4" Header="CT 量测值 (只读) (H19A0~H19A7)">
+                            <DataGrid
+                                x:Name="dgCTReadonly"
+                                Height="160"
+                                AlternatingRowBackground="{StaticResource RowEvenBrush}"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                GridLinesVisibility="All"
+                                RowBackground="{StaticResource RowOddBrush}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn
+                                        Width="60"
+                                        Binding="{Binding Channel}"
+                                        Header="通道"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding CTStatic, StringFormat=F2}"
+                                        Header="CT 保持值"
+                                        IsReadOnly="True" />
+                                    <DataGridTextColumn
+                                        Width="120"
+                                        Binding="{Binding CTDynamic, StringFormat=F2}"
+                                        Header="CT 动态值"
+                                        IsReadOnly="True" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
 
         <!--  底部状态栏  -->

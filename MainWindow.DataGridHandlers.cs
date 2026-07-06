@@ -630,5 +630,79 @@ namespace DTE10T_WPF
                 Logger.Error($"[Slope] 写入失败: {ex.Message}", ex);
             }
         }
+
+        private async void DgPointRW_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if(e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            if(!_isConnected || _modbus == null)
+            {
+                Logger.Warn("[PointRW] 请先连接设备");
+                return;
+            }
+
+            var model = e.Row.Item as PointRWModel;
+            if(model == null)
+            {
+                return;
+            }
+
+            int ch = GetChannelIndex(model.Channel);
+            if(ch < 0 || ch >= 8)
+            {
+                return;
+            }
+
+            string columnName = (e.Column as DataGridTextColumn)?.Header?.ToString() ?? string.Empty;
+
+            try
+            {
+                switch(columnName)
+                {
+                    case "积分量 (%)":
+                        await _modbus.WriteIntegralAsync(ch, model.Integral);
+                        break;
+                    case "比例误差补偿 (%)":
+                        await _modbus.WritePropCompAsync(ch, model.PropComp);
+                        break;
+                    case "输出比例带 (%)":
+                        await _modbus.WriteOutRatioAsync(ch, model.OutRatio);
+                        break;
+                    case "重叠温度 (℃)":
+                        await _modbus.WriteOverlapTempAsync(ch, model.OverlapTemp);
+                        break;
+                    case "第一组感度 (%)":
+                        await _modbus.WriteSensitivity1Async(ch, model.Sensitivity1);
+                        break;
+                    case "第二组感度 (%)":
+                        await _modbus.WriteSensitivity2Async(ch, model.Sensitivity2);
+                        break;
+                    case "模拟输出上限 (%)":
+                        await _modbus.WriteAnOutUpperAsync(ch, model.AnOutUpper);
+                        break;
+                    case "模拟输出下限 (%)":
+                        await _modbus.WriteAnOutLowerAsync(ch, model.AnOutLower);
+                        break;
+                    case "时间单位":
+                        await _modbus.WriteTimeUnitAsync(ch, model.TimeUnit);
+                        break;
+                    default:
+                        txtStatus.Text = $"未知列: {columnName}";
+                        txtStatus.Foreground = Brushes.Red;
+                        return;
+                }
+                txtStatus.Text = $"已写入 CH{ch + 1} {columnName}";
+                txtStatus.Foreground = Brushes.Green;
+            }
+            catch(Exception ex)
+            {
+                txtStatus.Text = $"写入失败: {ex.Message}";
+                txtStatus.Foreground = Brushes.Red;
+                Logger.Error($"[PointRW] 写入失败: {ex.Message}", ex);
+            }
+        }
     }
 }
