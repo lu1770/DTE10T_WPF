@@ -1,3 +1,4 @@
+using DTE10T_WPF.Services;
 using log4net;
 using log4net.Config;
 using System;
@@ -48,35 +49,42 @@ namespace DTE10T_WPF
         public static void Error(string message)
         {
             _log.Error(message);
+            NotificationService.ShowErrorNotification(message);
         }
 
         public static void Error(string format, params object[] args)
         {
             _log.ErrorFormat(format, args);
+            NotificationService.ShowErrorNotification(string.Format(format, args));
         }
 
         public static void Error(string message, Exception exception)
         {
-            if(exception is TimeoutException || 
-               exception is System.IO.IOException ||
-               exception.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+            bool isTransientError = exception is TimeoutException || 
+                                    exception is System.IO.IOException ||
+                                    exception.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase);
+
+            if(isTransientError)
             {
                 _log.Error($"{message}");
             }
             else
             {
                 _log.Error(message, exception);
+                NotificationService.ShowErrorNotification(message);
             }
         }
 
         public static void Fatal(string message)
         {
             _log.Fatal(message);
+            NotificationService.ShowFatalNotification(message);
         }
 
         public static void Fatal(string format, params object[] args)
         {
             _log.FatalFormat(format, args);
+            NotificationService.ShowFatalNotification(string.Format(format, args));
         }
     }
 }

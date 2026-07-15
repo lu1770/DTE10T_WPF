@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace DTE10T_WPF
@@ -118,6 +119,10 @@ namespace DTE10T_WPF
 
             LoadConfigIfExists();
             SetupConfigChangeListeners();
+
+            var windowHandle = new WindowInteropHelper(this).Handle;
+            NotificationService.Initialize(windowHandle);
+            NotificationService.RegisterTrayIcon();
 
             ConnectAsync().ConfigureAwait(false);
             Task.Run(async () => {
@@ -1005,6 +1010,7 @@ namespace DTE10T_WPF
             {
                 Logger.Error($"[Closing] 合并临时文件失败: {ex.Message}", ex);
             }
+            NotificationService.UnregisterTrayIcon();
             base.OnClosing(e);
         }
 
