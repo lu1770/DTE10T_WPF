@@ -41,7 +41,13 @@ foreach ($rid in $RuntimeIdentifiers) {
     Write-Host "Publish Directory: $publishDir"
 
     if (Test-Path $publishDir) {
-        Remove-Item -Path $publishDir -Recurse -Force
+        try {
+            Remove-Item -Path $publishDir -Recurse -Force -ErrorAction Stop
+        }
+        catch {
+            Write-Host "Warning: Cannot clean publish directory, files may be locked. Using fresh directory." -ForegroundColor Yellow
+            $publishDir = "$basePublishDir\$rid`_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+        }
     }
 
     $publishArgs = @(

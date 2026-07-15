@@ -4,3 +4,5 @@ obj/*
 /bin/Debug/**
 bin/
 publish/
+.cr/personal/Navigation/RecentFilesHistory.xml
+publish_new/
