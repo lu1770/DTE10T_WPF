@@ -3377,8 +3377,8 @@ namespace DTE10T_WPF.Services
                        {
                            _serialPort = new SerialPort(_comPort, _baudRate, _parity, _dataBits, _stopBits)
                            {
-                               ReadTimeout = 5000,
-                               WriteTimeout = 5000,
+                               ReadTimeout = 1000,
+                               WriteTimeout = 1000,
                            };
                            _serialPort.Open();
 
@@ -3391,8 +3391,8 @@ namespace DTE10T_WPF.Services
                            {
                                _master = factory.CreateRtuMaster(new SerialStreamResource(_serialPort));
                            }
-                           _master.Transport.ReadTimeout = 5000;
-                           _master.Transport.WriteTimeout = 5000;
+                           _master.Transport.ReadTimeout = 1000;
+                           _master.Transport.WriteTimeout = 1000;
 
                            _isConnected = true;
                            return true;
