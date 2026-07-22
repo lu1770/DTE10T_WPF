@@ -361,6 +361,7 @@ namespace DTE10T_WPF
                         return;
                     }
                     await PollAllDataAsync();
+                    RecordDataPoint();
                 });
             }
             catch(Exception ex)

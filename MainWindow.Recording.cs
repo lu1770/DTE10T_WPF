@@ -268,12 +268,10 @@ namespace DTE10T_WPF
                 _recordStartTime.ToString("yyyyMMdd_HHmmss")
             );
 
-            await Task.Run(() => {
-                if(!Directory.Exists(_tempFolder))
-                {
-                    Directory.CreateDirectory(_tempFolder);
-                }
-            });
+            if (!Directory.Exists(_tempFolder))
+            {
+                Directory.CreateDirectory(_tempFolder);
+            }
 
             btnStartRecord.IsEnabled = false;
             Application.Current.Dispatcher.Invoke(() => {
@@ -281,6 +279,7 @@ namespace DTE10T_WPF
                 txtStatus.Text = "📝 正在记录数据...";
                 txtStatus.Foreground = Brushes.Blue;
             });
+            
         }
 
         private async Task StopRecordAsync()

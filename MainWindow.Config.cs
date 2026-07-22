@@ -147,8 +147,7 @@ namespace DTE10T_WPF
                         SlaveId = int.TryParse(txtStationCode.Text, out int id) ? id : 1
                     }
                 };
-
-                await Task.Run(() => ConfigManager.SaveConfig(config));
+                ConfigManager.SaveConfig(config);
             }
             catch(Exception ex)
             {
