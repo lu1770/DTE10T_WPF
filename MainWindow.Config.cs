@@ -2,6 +2,7 @@ using DTE10T_WPF.Config;
 using System;
 using System.IO.Ports;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,7 +25,7 @@ namespace DTE10T_WPF
                 }
                 else
                 {
-                    foreach(string port in ports.OrderBy(p => p))
+                    foreach (string port in ports.OrderByDescending(p => Regex.Matches(p, @"\d+").Cast<Match>().Select(m => int.Parse(m.Value)).FirstOrDefault()))
                     {
                         cmbComPort.Items.Add(new ComboBoxItem { Content = port });
                     }
@@ -109,14 +110,15 @@ namespace DTE10T_WPF
         }
 
         private async void ModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        { await SaveConfigAsync(); }
+        { SaveConfig(); }
 
-        private async Task SaveConfigAsync()
+        private void SaveConfig()
         {
             try
             {
-                if(_isConfigSaving)
+                if (_isConfigSaving)
                 {
+                    Logger.Info($"[重复保存] 跳过");
                     return;
                 }
 
@@ -149,7 +151,7 @@ namespace DTE10T_WPF
                 };
                 ConfigManager.SaveConfig(config);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Error($"[Config] 保存配置失败: {ex.Message}", ex);
             }
@@ -161,35 +163,35 @@ namespace DTE10T_WPF
 
         private void SetupConfigChangeListeners()
         {
-            txtStationCode.LostFocus += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+            txtStationCode.LostFocus += async (sender, e) => { SaveConfig(); if(_isConnected)
                                                                                         {
                                                                                             await ReconnectAsync();
                                                                                         } };
-            cmbBaudRate.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+            cmbBaudRate.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected)
                                                                                             {
                                                                                                 await ReconnectAsync();
                                                                                             } };
-            cmbComPort.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+            cmbComPort.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected)
                                                                                            {
                                                                                                await ReconnectAsync();
                                                                                            } };
-            cmbProtocol.SelectionChanged += async (sender, e) => { await SaveConfigAsync(); if(_isConnected)
+            cmbProtocol.SelectionChanged += async (sender, e) => { SaveConfig(); if(_isConnected)
                                                                                             {
                                                                                                 await ReconnectAsync();
                                                                                             } };
 
-            PVSVList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            PIDList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            AlarmList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            OutputList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            SlopeList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            InputAdjList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            CTList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            EventList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            HotRunnerList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            CommList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            PatternList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
-            StepList.CollectionChanged += async (sender, e) => await SaveConfigAsync();
+            PVSVList.CollectionChanged += async (sender, e) => SaveConfig();
+            PIDList.CollectionChanged += async (sender, e) => SaveConfig();
+            AlarmList.CollectionChanged += async (sender, e) => SaveConfig();
+            OutputList.CollectionChanged += async (sender, e) => SaveConfig();
+            SlopeList.CollectionChanged += async (sender, e) => SaveConfig();
+            InputAdjList.CollectionChanged += async (sender, e) => SaveConfig();
+            CTList.CollectionChanged += async (sender, e) => SaveConfig();
+            EventList.CollectionChanged += async (sender, e) => SaveConfig();
+            HotRunnerList.CollectionChanged += async (sender, e) => SaveConfig();
+            CommList.CollectionChanged += async (sender, e) => SaveConfig();
+            PatternList.CollectionChanged += async (sender, e) => SaveConfig();
+            StepList.CollectionChanged += async (sender, e) => SaveConfig();
 
             AttachPropertyChangedListeners();
         }

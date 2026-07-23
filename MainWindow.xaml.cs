@@ -981,7 +981,7 @@ namespace DTE10T_WPF
 
         private void Window_Closing(object sender, CancelEventArgs e)
         {
-            SaveConfigAsync().ConfigureAwait(false);
+            SaveConfig();
             ExportToCsvAsync().ConfigureAwait(false);
         }
 
@@ -989,7 +989,7 @@ namespace DTE10T_WPF
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             _pollTimer?.Dispose();
-            SaveConfigAsync().ConfigureAwait(false);
+            SaveConfig();
             try
             {
                 _modbus?.Disconnect();
